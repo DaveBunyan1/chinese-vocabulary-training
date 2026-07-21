@@ -1,0 +1,16 @@
+# Python / Virtual Environment
+.venv/
+__pycache__/
+*.py[cod]
+
+# Tooling Caches (Testing & Type Checking)
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment / Secrets
+.env
+
+# IDE Settings (Keep workspace settings, ignore personal/local state)
+.vscode/*
+!.vscode/settings.json
