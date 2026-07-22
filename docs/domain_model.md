@@ -239,11 +239,23 @@ Immutable.
 
 ## Token
 
-Contains
+A Token represents a meaningful semantic unit extracted from Chinese text.
+
+A Token is immutable and identified by its textual representation.
+
+Contains:
 
 - text
+
+May be enriched with:
+
 - pinyin
 - part of speech
+- character decomposition
+- vocabulary metadata
+
+These additional attributes are produced by language analysis services and are
+not responsible for defining the identity of the Token.
 
 Immutable.
 
