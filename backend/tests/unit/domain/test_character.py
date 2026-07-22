@@ -32,4 +32,4 @@ def test_character_is_immutable() -> None:
     char = Character("铁")
 
     with pytest.raises(AttributeError):
-        char.symbol = "木"  # type: ignore[attr-defined]
+        char.symbol = "木"  # type: ignore[misc]
