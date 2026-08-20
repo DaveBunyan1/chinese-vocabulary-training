@@ -98,7 +98,7 @@ markers = [
 # 4. Coverage
 [tool.coverage.run]
 source = ["src"]
-omit = ["tests/*", "migrations/*"]
+omit = ["tests/*", "migrations/*", "*/__init__.py"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/chinese_learning"]
