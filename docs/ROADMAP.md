@@ -13,59 +13,50 @@ Phase 2: Core Domain
 └── feat/domain-learner-knowledge
 
 
-Phase 3: First Vertical Slice (Text Analysis)
-├── feat/analyse-sentence-usecase
-├── feat/jieba-nlp-adapter
-├── feat/sentence-repository
-├── feat/rest-api
-└── feat/frontend-reader-view
+Phase 3: Persistence & Infrastructure
+├── feat/database-setup                        (SQLAlchemy / async, Alembic)
+├── feat/repositories-learner-knowledge        (VocabularyKnowledge + CharacterKnowledge)
+├── feat/repositories-linguistic               (Sentence, VocabularyItem, Category)
+├── feat/repositories-identity                 (User + LearnerProfile)
+└── feat/seed-basic-categories                 (HSK levels + a few topic categories)
 
 
-Phase 4: Vocabulary & Character Knowledge System
-├── feat/character-knowledge-profile
-├── feat/vocabulary-profile
-├── feat/vocabulary-status
-├── feat/category-system
-└── feat/frontend-vocabulary-dashboard
+Phase 4: First Vertical Slice – “Build My Knowledge”
+Goal: A learner can paste Chinese text and the system builds their vocabulary + character knowledge profile, organised by categories.
+
+├── feat/analyse-text-usecase                  (jieba or similar → Tokens + Characters)
+├── feat/import-vocabulary-from-text
+├── feat/update-knowledge-on-exposure          (with_exposure calls)
+├── feat/assign-categories-to-vocabulary
+├── feat/rest-api-text-import
+└── feat/frontend-text-import-and-knowledge-view
 
 
-Phase 5: Practice Engine (MVP Learning Loop)
-├── feat/domain-exercise-model
-├── feat/domain-question-model
+Phase 5: Vocabulary & Character Practice (Core MVP)
+Goal: Practise recall and recognition filtered by category / subcategory / knowledge status.
+
+├── feat/domain-exercise-and-question
 ├── feat/domain-answer-attempt
-├── feat/recall-practice-usecase
-├── feat/recall-scoring
-├── feat/character-recognition-practice
-├── feat/character-recognition-scoring
-└── feat/frontend-practice-session
+├── feat/generate-vocabulary-recall-exercise   (by category + status)
+├── feat/generate-character-recognition-exercise
+├── feat/score-and-update-knowledge            (with_success / with_failure)
+├── feat/rest-api-practice
+└── feat/frontend-practice-session             (simple, clean UI)
 
 
-Phase 6: Learning Analytics
-├── feat/domain-events
-├── feat/recall-attempt-event
-├── feat/character-recognition-event
+Phase 6: Knowledge Dashboard & Filtering
+├── feat/vocabulary-dashboard                  (filter by category, status, HSK…)
+├── feat/character-dashboard
+├── feat/category-management-ui                (create subcategories, assign items)
+└── feat/basic-progress-stats                  (derived from the knowledge records)
+
+
+Phase 7: Polish & Real Learning Loop
+├── feat/spaced-repetition-fields              (start using next_review_at etc.)
 ├── feat/review-queue-service
-├── feat/weighted-selection-algorithm
-└── feat/frontend-progress-dashboard
+├── feat/weighted-item-selection
+└── feat/frontend-smart-review
 
 
-Phase 7: Advanced Analysis
-├── feat/comprehensibility-score
-├── feat/reading-analysis-service
-├── feat/reading-difficulty-estimation
-└── feat/frontend-reading-insights
-
-
-Phase 8: AI Conversation
-├── feat/chat-session
-├── feat/prompt-context-builder
-├── feat/llm-adapter
-└── feat/frontend-ai-chat
-
-
-Phase 9: Sentence Generation Practice
-├── feat/grammar-pattern-model
-├── feat/sentence-transformation-exercise
-├── feat/sentence-evaluation-service
-└── feat/frontend-writing-practice
+Phase 8+: Future (AI conversation, sentence construction, deep reading analysis, etc.)
 ```
