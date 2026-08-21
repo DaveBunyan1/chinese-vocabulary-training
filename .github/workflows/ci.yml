@@ -33,5 +33,4 @@ jobs:
 
       - name: Run Test Suite via Makefile
         run: |
-          cd backend
           make test
