@@ -1,6 +1,14 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,6 +34,41 @@ class SentenceModel(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, nullable=False)
     raw_text: Mapped[Text] = mapped_column(Text, nullable=False, index=True)
     tokens_json: Mapped[Text] = mapped_column(Text, nullable=False)
+
+
+class VocabularyItemModel(Base):
+    __tablename__ = "vocabulary_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    text: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    pinyin: Mapped[str] = mapped_column(String(255), nullable=False)
+    meaning: Mapped[str] = mapped_column(String(512), nullable=False)
+
+
+class CategoryModel(Base):
+    __tablename__ = "categories"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    parent_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("categories.id"), nullable=True, index=True
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class CategoryAssignmentModel(Base):
+    __tablename__ = "category_assignments"
+
+    category_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("categories.id"), primary_key=True
+    )
+    vocabulary_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("vocabulary_items.id"), primary_key=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("category_id", "vocabulary_id", name="uq_category_vocabulary"),
+    )
 
 
 class CharacterKnowledgeModel(Base):
