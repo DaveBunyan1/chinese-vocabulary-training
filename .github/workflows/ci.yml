@@ -12,10 +12,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.14"
 
@@ -24,18 +24,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e "./backend[dev]"
 
-      - name: Run Ruff (Linter & Formatter)
+      - name: Run Quality Checks (Ruff & Mypy)
         run: |
           cd backend
           ruff check .
           ruff format --check .
-
-      - name: Run Mypy (Type Checker)
-        run: |
-          cd backend
           mypy src
 
-      - name: Run Pytest (Unit Tests)
+      - name: Run Test Suite via Makefile
         run: |
-          cd backend
-          pytest
+          make test

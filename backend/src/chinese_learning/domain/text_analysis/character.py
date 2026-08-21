@@ -41,6 +41,9 @@ class Character:
         if not self._is_cjk(self.symbol):
             raise ValueError("Character must be a Chinese character")
 
+    def __str__(self) -> str:
+        return self.symbol
+
     @staticmethod
     def _is_cjk(value: str) -> bool:
         code = ord(value)

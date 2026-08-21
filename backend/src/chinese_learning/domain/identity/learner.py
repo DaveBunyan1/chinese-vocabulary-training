@@ -8,6 +8,9 @@ from chinese_learning.domain.identity.user import UserId
 class LearnerId:
     value: str
 
+    def __str__(self) -> str:
+        return self.value
+
 
 @dataclass(frozen=True, slots=True)
 class LearnerProfile:

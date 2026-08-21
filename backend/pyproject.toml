@@ -35,6 +35,7 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
+    "aiosqlite>=0.20.0",
     "httpx>=0.27.0",
     "ruff>=0.3.0",
     "mypy>=1.8.0",
@@ -65,6 +66,9 @@ ignore = [
     "E501", # Line length handled by formatter
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"**/conftest.py" = ["F401"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["chinese_learning"]
 
@@ -91,7 +95,7 @@ minversion = "8.0"
 testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
-addopts = "-v --tb=short --strict-markers"
+addopts = "-v --tb=short --strict-markers --cov=chinese_learning --cov-report=term-missing"
 markers = [
     "unit: Pure fast unit tests (no DB or external I/O)",
     "integration: Tests requiring DB adapters or external libraries",
