@@ -5,7 +5,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     PORT: int = 8000
     LOG_LEVEL: str = "INFO"
-    DATABASE_URL: str = "postgresql+asyncpg://dev_user:secret_password@localhost:5432/chinese_learning_dev"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://chinese:chinese@localhost:5432/chinese_learning"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
