@@ -92,7 +92,7 @@ ignore_missing_imports = true
 # 3. Pytest Configuration
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["backend/tests"]
+testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
 addopts = "-v --tb=short --strict-markers --cov=chinese_learning --cov-report=term-missing"
