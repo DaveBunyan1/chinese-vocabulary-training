@@ -22,7 +22,7 @@ class Sentence:
             tuple(tokens),
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.raw_text
 
     @property
