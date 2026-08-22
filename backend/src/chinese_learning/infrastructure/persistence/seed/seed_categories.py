@@ -1,17 +1,13 @@
 import asyncio
-import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from chinese_learning.infrastructure.persistence.repositories.linguistic.category_repository import (
     CategoryRepository,
 )
+from chinese_learning.infrastructure.persistence.repositories.repo_utils import logger
 from chinese_learning.infrastructure.persistence.seed.categories import BASIC_CATEGORIES
-from chinese_learning.infrastructure.telemetry.logging import (
-    settings,
-)
-
-logger = logging.getLogger(__name__)
+from chinese_learning.infrastructure.telemetry.config import settings
 
 
 async def seed_categories(session: AsyncSession) -> None:
