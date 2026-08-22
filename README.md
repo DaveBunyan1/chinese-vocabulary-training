@@ -23,8 +23,8 @@ The architectural decisions here were directly informed by lessons learned from 
 
 | Branch / Feature                               | Status        | Description                                                                          |
 | :--------------------------------------------- | :------------ | :----------------------------------------------------------------------------------- |
-| `feat/analyse-text-usecase`                    | _In Progress_ | Tokenize text into words/characters using Jieba/HanLP pipeline with noise filtering. |
-| `feat/import-vocabulary-from-text`             | _Pending_     | Persist new words and character entities into the domain layer.                      |
+| `feat/analyse-text-usecase`                    | _Complete   _ | Tokenize text into words/characters using Jieba/HanLP pipeline with noise filtering. |
+| `feat/import-vocabulary-from-text`             | _In Progress_ | Persist new words and character entities into the domain layer.                      |
 | `feat/update-knowledge-on-exposure`            | _Pending_     | Trigger `with_exposure` Domain Events to update user knowledge profiles.             |
 | `feat/assign-categories-to-vocabulary`         | _Pending_     | Tag imported vocabulary with thematic categories.                                    |
 | `feat/rest-api-text-import`                    | _Pending_     | Fast API endpoints to handle text payload ingestion.                                 |
