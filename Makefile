@@ -53,6 +53,11 @@ test-db-down:
 test-db-logs:
 	$(DOCKER_COMPOSE) -f docker-compose.test.yml logs -f postgres-test
 
+# Run unit tests (starts DB if needed)
+test-unit: test-db-up
+	$(PYTEST) backend/tests/unit -v --tb=short
+	$(MAKE) test-db-down
+
 # Run integration tests (starts DB if needed)
 test-integration: test-db-up
 	$(PYTEST) backend/tests/integration -v --tb=short
