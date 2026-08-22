@@ -107,7 +107,7 @@ A cross-platform Makefile is provided in the project root to manage database lif
 ### 1. Full Stack (Backend + Database)
 
 To spin up both the FastAPI backend (with live code reload on ./backend/src) and the PostgreSQL database:
-`bash
+    ```bash
     docker compose up --build
-    `
+    ```
 The API will be accessible at http://localhost:8000.
