@@ -5,10 +5,10 @@ import jieba
 
 from chinese_learning.domain.text_analysis.character import Character
 from chinese_learning.domain.text_analysis.sentence import Sentence
-from chinese_learning.domain.text_analysis.text_analysis_result import (
+from chinese_learning.domain.text_analysis.token import Token
+from chinese_learning.infrastructure.nlp.text_analysis_result import (
     TextAnalysisResult,
 )
-from chinese_learning.domain.text_analysis.token import Token
 
 # Matches pure punctuation / symbols / whitespace
 _PUNCTUATION_RE = re.compile(

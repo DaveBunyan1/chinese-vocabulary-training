@@ -1,8 +1,8 @@
 import pytest
 
-from chinese_learning.domain.text_analysis.analyse_text import AnalyseText
 from chinese_learning.domain.text_analysis.character import Character
 from chinese_learning.domain.text_analysis.token import Token
+from chinese_learning.infrastructure.nlp.analyse_text import AnalyseText
 
 
 @pytest.fixture
