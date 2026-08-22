@@ -6,6 +6,9 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from chinese_learning.infrastructure.persistence import (
+    models,  # pyright: ignore[reportUnusedImport]  # noqa: F401
+)
 from chinese_learning.infrastructure.persistence.base import Base
 from chinese_learning.infrastructure.telemetry.config import settings
 

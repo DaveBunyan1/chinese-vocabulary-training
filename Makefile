@@ -1,14 +1,41 @@
 .PHONY: test-db-up test-db-down test-db-logs test test-integration
 
-# Detect OS and set pytest command accordingly
+# OS-Agnostic Executable Detection
 ifeq ($(OS),Windows_NT)
-    PYTEST = backend/.venv/Scripts/pytest.exe
-    DOCKER_COMPOSE = docker compose
+    PYTHON := backend/.venv/Scripts/python.exe
+    PYTEST := backend/.venv/Scripts/pytest.exe
 else
-    PYTEST = pytest
-    DOCKER_COMPOSE = docker compose
+    PYTHON := $(shell which python3 2>/dev/null || echo backend/.venv/bin/python)
+    PYTEST := $(shell which pytest 2>/dev/null || echo backend/.venv/bin/pytest)
 endif
 
+DOCKER_COMPOSE := docker compose
+
+migrate:
+	backend/.venv/Scripts/alembic.exe -c backend/alembic.ini upgrade head
+
+# Spin up the primary local development database (docker-compose.yml)
+db-up:
+	$(DOCKER_COMPOSE) up -d --remove-orphans db
+	@echo "Waiting for development Postgres to become healthy..."
+	@until $(DOCKER_COMPOSE) exec -T db pg_isready -U chinese -d chinese_learning > /dev/null 2>&1; do \
+		sleep 1; \
+	done
+	@echo "Development Postgres is ready. Running migrations..."
+	$(MAKE) migrate
+	@echo "Migrations complete"
+
+db-down:
+	$(DOCKER_COMPOSE) down -v
+
+# --- Seeding ---
+
+# Ensure dev database is running, then execute seeding script inside virtualenv
+seed-categories: db-up
+	cd backend
+	$(PYTHON) -m chinese_learning.infrastructure.persistence.seed.seed_categories
+
+# --- Testing ---
 # Start the test Postgres container
 test-db-up:
 	$(DOCKER_COMPOSE) -f docker-compose.test.yml up -d
