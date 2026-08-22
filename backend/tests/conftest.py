@@ -3,6 +3,7 @@ import os
 import subprocess
 import time
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -11,7 +12,8 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from chinese_learning.domain.category.category import Category, CategoryId
-from chinese_learning.domain.identity.learner import LearnerId
+from chinese_learning.domain.identity.learner import LearnerId, LearnerProfile
+from chinese_learning.domain.identity.user import User, UserId
 from chinese_learning.domain.learner.character_knowledge import CharacterKnowledge
 from chinese_learning.domain.learner.knowledge_status import KnowledgeStatus
 from chinese_learning.domain.learner.vocabulary_knowledge import VocabularyKnowledge
@@ -164,6 +166,38 @@ def make_category() -> Callable[..., Category]:
         }
         defaults.update(overrides)
         return Category(**defaults)
+
+    return _factory
+
+
+@pytest.fixture
+def make_user() -> Callable[..., User]:
+    def _factory(**overrides: Any) -> User:
+        defaults = {
+            "id": UserId(str(uuid4())),
+            "email": "example@email.com",
+            "display_name": "User Name",
+            "created_at": datetime.now(UTC),
+        }
+
+        defaults.update(overrides)
+        return User(**defaults)
+
+    return _factory
+
+
+@pytest.fixture
+def make_learner_profile() -> Callable[..., LearnerProfile]:
+    def _factory(**overrides: Any) -> LearnerProfile:
+        defaults = {
+            "id": LearnerId(str(uuid4())),
+            "user_id": UserId("User-1"),
+            "language": "zh-CN",
+            "display_name": "Chinese Learner",
+            "created_at": datetime.now(UTC),
+        }
+        defaults.update(overrides)
+        return LearnerProfile(**defaults)
 
     return _factory
 
