@@ -10,12 +10,16 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from chinese_learning.domain.category.category import Category, CategoryId
 from chinese_learning.domain.identity.learner import LearnerId
 from chinese_learning.domain.learner.character_knowledge import CharacterKnowledge
 from chinese_learning.domain.learner.knowledge_status import KnowledgeStatus
 from chinese_learning.domain.learner.vocabulary_knowledge import VocabularyKnowledge
 from chinese_learning.domain.text_analysis.character import Character
-from chinese_learning.domain.vocabulary.vocabulary_item import VocabularyId
+from chinese_learning.domain.vocabulary.vocabulary_item import (
+    VocabularyId,
+    VocabularyItem,
+)
 from chinese_learning.infrastructure.persistence.base import Base
 
 # Import models so they register with Base.metadata
@@ -130,6 +134,36 @@ def make_character_knowledge() -> Callable[..., CharacterKnowledge]:
         }
         defaults.update(overrides)
         return CharacterKnowledge(**defaults)
+
+    return _factory
+
+
+@pytest.fixture
+def make_vocabulary_item() -> Callable[..., VocabularyItem]:
+    def _factory(**overrides: Any) -> VocabularyItem:
+        defaults = {
+            "id": VocabularyId(str(uuid4())),
+            "text": "你好",
+            "pinyin": "nǐhǎo",
+            "meaning": "hello",
+        }
+        defaults.update(overrides)
+        return VocabularyItem(**defaults)
+
+    return _factory
+
+
+@pytest.fixture
+def make_category() -> Callable[..., Category]:
+    def _factory(**overrides: Any) -> Category:
+        defaults = {
+            "name": "HSK 3",
+            "parent_id": None,
+            "sort_order": 0,
+            "id": CategoryId(str(uuid4())),
+        }
+        defaults.update(overrides)
+        return Category(**defaults)
 
     return _factory
 
