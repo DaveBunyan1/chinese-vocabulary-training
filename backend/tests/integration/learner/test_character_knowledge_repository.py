@@ -8,7 +8,7 @@ from chinese_learning.domain.identity.learner import LearnerId
 from chinese_learning.domain.learner.character_knowledge import CharacterKnowledge
 from chinese_learning.domain.learner.knowledge_status import KnowledgeStatus
 from chinese_learning.domain.text_analysis.character import Character
-from chinese_learning.infrastructure.persistence.repositories.character_knowledge_repository import (
+from chinese_learning.infrastructure.persistence.repositories.learner.character_knowledge_repository import (
     CharacterKnowledgeRepository,
 )
 

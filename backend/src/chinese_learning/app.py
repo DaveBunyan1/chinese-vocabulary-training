@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from chinese_learning.infrastructure.telemetry.config import settings
 from chinese_learning.infrastructure.telemetry.logging import setup_logging
+from chinese_learning.presentation.rest.routers import text_import
 
 logger = structlog.get_logger()
 
@@ -28,3 +29,6 @@ app = FastAPI(
 @app.get("/health", tags=["Infrastructure"])
 async def health_check() -> dict[str, str]:
     return {"status": "ok", "environment": settings.ENVIRONMENT}
+
+
+app.include_router(text_import.router, prefix="/api/v1")

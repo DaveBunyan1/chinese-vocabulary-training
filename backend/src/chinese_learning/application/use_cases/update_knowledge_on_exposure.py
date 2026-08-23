@@ -1,5 +1,3 @@
-# application/use_cases/update_knowledge_on_exposure.py
-
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -9,10 +7,10 @@ from chinese_learning.domain.learner.knowledge_status import KnowledgeStatus
 from chinese_learning.domain.learner.vocabulary_knowledge import VocabularyKnowledge
 from chinese_learning.domain.text_analysis.character import Character
 from chinese_learning.domain.vocabulary.vocabulary_item import VocabularyId
-from chinese_learning.infrastructure.persistence.repositories.character_knowledge_repository import (
+from chinese_learning.infrastructure.persistence.repositories.learner.character_knowledge_repository import (
     CharacterKnowledgeRepository,
 )
-from chinese_learning.infrastructure.persistence.repositories.vocabulary_knowledge_repository import (
+from chinese_learning.infrastructure.persistence.repositories.learner.vocabulary_knowledge_repository import (
     VocabularyKnowledgeRepository,
 )
 

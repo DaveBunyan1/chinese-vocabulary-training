@@ -15,7 +15,7 @@ from chinese_learning.infrastructure.persistence.mappers.learner_mappers import 
 )
 from chinese_learning.infrastructure.persistence.models import CharacterKnowledgeModel
 
-from .repo_utils import logger, record_repo_metric
+from ..repo_utils import logger, record_repo_metric
 
 
 class CharacterKnowledgeRepository:

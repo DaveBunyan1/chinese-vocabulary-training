@@ -1,5 +1,3 @@
-# tests/unit/application/use_cases/test_import_vocabulary_from_text.py
-
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
