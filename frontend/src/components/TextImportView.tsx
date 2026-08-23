@@ -19,7 +19,6 @@ export const TextImportView: React.FC = () => {
 
     try {
       const data = await importChineseText({ raw_text: text });
-      console.log(data);
       setResult(data);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to analyze text.");

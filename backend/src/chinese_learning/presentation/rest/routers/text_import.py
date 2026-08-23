@@ -33,7 +33,6 @@ from chinese_learning.infrastructure.persistence.repositories.linguistic.categor
 from chinese_learning.infrastructure.persistence.repositories.linguistic.vocabulary_item_repository import (
     VocabularyItemRepository,
 )
-from chinese_learning.infrastructure.persistence.repositories.repo_utils import logger
 from chinese_learning.presentation.rest.schemas.text_import import (
     ImportedVocabularySummary,
     TextImportRequest,
@@ -76,12 +75,7 @@ async def import_text(
     hsk_lookup: HSKLookupService = Depends(get_default_hsk_lookup),
     dictionary: CedictDictionary = Depends(get_cedict_dictionary),
 ) -> TextImportResponse:
-    logger.debug(
-        "text_import.start",
-        learner_id=learner_id.value,
-        raw_text_length=len(payload.raw_text),
-        raw_text_preview=payload.raw_text[:80],
-    )
+
     vocab_repo = VocabularyItemRepository(session)
     category_repo = CategoryRepository(session)
     assignment_repo = CategoryAssignmentRepository(session)
@@ -99,60 +93,10 @@ async def import_text(
 
     import_result = await import_use_case.execute(learner_id, payload.raw_text)
 
-    token_texts = [t.text for t in import_result.analysis.sentence.tokens]
-    char_texts = [str(c) for c in import_result.analysis.characters]
-    vocab_ids = [item.id for item in import_result.vocabulary_items]
-    vocab_id_values = [vid.value for vid in vocab_ids]
-    vocab_texts = [item.text for item in import_result.vocabulary_items]
-
-    logger.debug(
-        "text_import.after_import",
-        learner_id=learner_id.value,
-        token_count=len(token_texts),
-        token_texts=token_texts,
-        unique_token_texts=list(dict.fromkeys(token_texts)),
-        duplicate_token_texts=sorted(
-            {t for t in token_texts if token_texts.count(t) > 1}
-        ),
-        character_count=len(char_texts),
-        character_texts=char_texts,
-        unique_character_texts=list(dict.fromkeys(char_texts)),
-        vocabulary_item_count=len(import_result.vocabulary_items),
-        vocabulary_texts=vocab_texts,
-        vocabulary_ids=vocab_id_values,
-        unique_vocabulary_ids=list(dict.fromkeys(vocab_id_values)),
-        duplicate_vocabulary_ids=sorted(
-            {v for v in vocab_id_values if vocab_id_values.count(v) > 1}
-        ),
-        created_count=import_result.created_count,
-        existing_count=import_result.existing_count,
-        meanings={item.text: item.meaning for item in import_result.vocabulary_items},
-        hsk_levels={
-            item.text: hsk_lookup.get_level(item.text)
-            for item in import_result.vocabulary_items
-        },
-    )
-
-    logger.debug(
-        "text_import.before_exposure",
-        learner_id=learner_id.value,
-        exposure_vocabulary_id_count=len(vocab_ids),
-        exposure_character_count=len(char_texts),
-        exposure_vocabulary_ids=vocab_id_values,
-        exposure_characters=char_texts,
-    )
-
     exposure_result = await update_use_case.execute(
         learner_id=learner_id,
         characters=list(import_result.analysis.characters),
         vocabulary_ids=[item.id for item in import_result.vocabulary_items],
-    )
-
-    logger.debug(
-        "text_import.after_exposure",
-        learner_id=learner_id.value,
-        character_knowledge_updated=exposure_result.character_knowledge_updated,
-        vocabulary_knowledge_updated=exposure_result.vocabulary_knowledge_updated,
     )
 
     await session.commit()
@@ -167,17 +111,6 @@ async def import_text(
         )
         for item in import_result.vocabulary_items
     ]
-
-    logger.debug(
-        "text_import.complete",
-        learner_id=learner_id.value,
-        total_tokens=len(import_result.analysis.sentence.tokens),
-        created_vocabulary_count=import_result.created_count,
-        existing_vocabulary_count=import_result.existing_count,
-        updated_character_knowledge_count=exposure_result.character_knowledge_updated,
-        updated_vocabulary_knowledge_count=exposure_result.vocabulary_knowledge_updated,
-        imported_item_count=len(imported_summaries),
-    )
 
     return TextImportResponse(
         total_tokens=len(import_result.analysis.sentence.tokens),
