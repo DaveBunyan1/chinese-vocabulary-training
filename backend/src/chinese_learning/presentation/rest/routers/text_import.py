@@ -61,30 +61,6 @@ def get_cedict_dictionary() -> CedictDictionary:
     return CedictDictionary(dict_path)
 
 
-# Dependency containers / factories can be extracted as your container grows
-async def get_text_import_use_case(
-    session: AsyncSession = Depends(get_db_session),
-) -> ImportVocabularyFromText:
-    analyse_text = AnalyseText()
-    dictionary = get_cedict_dictionary()
-    vocab_repo = VocabularyItemRepository(session)
-    category_repo = CategoryRepository(session)
-    assignment_repo = CategoryAssignmentRepository(session)
-    hsk_lookup = get_default_hsk_lookup()
-
-    assign_hsk = AssignHSKCategory(hsk_lookup, category_repo, assignment_repo)
-    return ImportVocabularyFromText(analyse_text, dictionary, vocab_repo, assign_hsk)
-
-
-async def get_update_knowledge_use_case(
-    session: AsyncSession = Depends(get_db_session),
-) -> UpdateKnowledgeOnExposure:
-    return UpdateKnowledgeOnExposure(
-        character_knowledge_repo=CharacterKnowledgeRepository(session),
-        vocabulary_knowledge_repo=VocabularyKnowledgeRepository(session),
-    )
-
-
 @router.post(
     "/text",
     response_model=TextImportResponse,
