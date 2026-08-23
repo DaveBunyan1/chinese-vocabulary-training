@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from chinese_learning.application.use_cases.assign_hsk_category import AssignHSKCategory
 from chinese_learning.domain.identity.learner import LearnerId
 from chinese_learning.domain.vocabulary.vocabulary_item import VocabularyItem
 from chinese_learning.infrastructure.nlp.analyse_text import AnalyseText
@@ -26,35 +27,38 @@ class ImportVocabularyFromText:
         analyse_text: AnalyseText,
         dictionary: CedictDictionary,
         vocabulary_repo: VocabularyItemRepository,
+        assign_hsk: AssignHSKCategory,
     ) -> None:
         self._analyse_text = analyse_text
         self._dictionary = dictionary
         self._vocabulary_repo = vocabulary_repo
+        self._assign_hsk = assign_hsk
 
     async def execute(
         self, learner_id: LearnerId, raw_text: str
     ) -> ImportVocabularyResult:
-        # 1. Analyse the text
         analysis = self._analyse_text.execute(raw_text)
 
-        # 2. Resolve each token to a VocabularyItem
         items: list[VocabularyItem] = []
         created = 0
         existing = 0
+        newly_created: list[VocabularyItem] = []
 
         for token in analysis.sentence.tokens:
-            # Prefer an already-persisted item with the same text
             existing_item = await self._vocabulary_repo.get_by_text(token.text)
 
             if existing_item is not None:
                 items.append(existing_item)
                 existing += 1
             else:
-                # Look up (or generate) pinyin + meaning and persist
                 new_item = self._dictionary.lookup(token.text)
                 await self._vocabulary_repo.save(new_item)
                 items.append(new_item)
+                newly_created.append(new_item)
                 created += 1
+
+        if newly_created:
+            await self._assign_hsk.execute(newly_created)
 
         return ImportVocabularyResult(
             vocabulary_items=tuple(items),

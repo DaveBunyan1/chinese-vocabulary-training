@@ -70,15 +70,22 @@ def vocabulary_repo() -> AsyncMock:
 
 
 @pytest.fixture
+def assign_hsk() -> AsyncMock:
+    return AsyncMock()
+
+
+@pytest.fixture
 def use_case(
     analyse_text: Mock,
     dictionary: Mock,
     vocabulary_repo: AsyncMock,
+    assign_hsk: AsyncMock,
 ) -> ImportVocabularyFromText:
     return ImportVocabularyFromText(
         analyse_text=analyse_text,
         dictionary=dictionary,
         vocabulary_repo=vocabulary_repo,
+        assign_hsk=assign_hsk,
     )
 
 
