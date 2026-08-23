@@ -1,5 +1,3 @@
-# tests/infrastructure/persistence/repositories/test_learner_knowledge_repositories.py
-
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -11,7 +9,7 @@ from chinese_learning.domain.identity.learner import LearnerId
 from chinese_learning.domain.learner.knowledge_status import KnowledgeStatus
 from chinese_learning.domain.learner.vocabulary_knowledge import VocabularyKnowledge
 from chinese_learning.domain.vocabulary.vocabulary_item import VocabularyId
-from chinese_learning.infrastructure.persistence.repositories.vocabulary_knowledge_repository import (
+from chinese_learning.infrastructure.persistence.repositories.learner.vocabulary_knowledge_repository import (
     VocabularyKnowledgeRepository,
 )
 

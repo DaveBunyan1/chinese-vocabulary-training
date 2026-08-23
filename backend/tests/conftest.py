@@ -2,15 +2,17 @@
 import os
 import subprocess
 import time
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from chinese_learning.app import app
 from chinese_learning.domain.category.category import Category, CategoryId, CategoryType
 from chinese_learning.domain.identity.learner import LearnerId, LearnerProfile
 from chinese_learning.domain.identity.user import User, UserId
@@ -25,9 +27,13 @@ from chinese_learning.domain.vocabulary.vocabulary_item import (
 from chinese_learning.infrastructure.persistence.base import Base
 
 # Import models so they register with Base.metadata
+from chinese_learning.infrastructure.persistence.database import get_db_session
 from chinese_learning.infrastructure.persistence.models import (
     CharacterKnowledgeModel,  # pyright: ignore[reportUnusedImport]
     VocabularyKnowledgeModel,  # pyright: ignore[reportUnusedImport]
+)
+from chinese_learning.infrastructure.persistence.repositories.linguistic.category_repository import (
+    CategoryRepository,
 )
 
 
@@ -229,3 +235,70 @@ async def db_session():
         await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session_populated():
+
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+
+    # Create all tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    session_factory = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+
+    async with session_factory() as session:
+        cat_repo = CategoryRepository(session)
+
+        uncategorised_cat = Category(
+            id=CategoryId(value=str(uuid4())),
+            name="Uncategorised",
+            type=CategoryType.SYSTEM,
+        )
+        await cat_repo.save(uncategorised_cat)
+
+        # 2. Seed HSK 1 through 7 Categories
+        for level in range(1, 8):
+            hsk_cat = Category(
+                id=CategoryId(value=str(uuid4())),
+                name=f"HSK {level}",
+                type=CategoryType.HSK,
+                hsk_level=level,
+                sort_order=level,
+            )
+            await cat_repo.save(hsk_cat)
+
+        await session.commit()
+
+        yield session
+        await session.rollback()
+
+    # Drop all tables after the test
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def async_client(
+    db_session_populated: AsyncSession,
+) -> AsyncGenerator[AsyncClient]:
+    async def _get_test_db() -> AsyncIterator[AsyncSession]:
+        yield db_session_populated
+
+    app.dependency_overrides[get_db_session] = _get_test_db
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        yield client
+
+    app.dependency_overrides.clear()
