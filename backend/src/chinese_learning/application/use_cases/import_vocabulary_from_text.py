@@ -39,23 +39,29 @@ class ImportVocabularyFromText:
     ) -> ImportVocabularyResult:
         analysis = self._analyse_text.execute(raw_text)
 
-        items: list[VocabularyItem] = []
+        items_by_text: dict[str, VocabularyItem] = {}
         created = 0
         existing = 0
         newly_created: list[VocabularyItem] = []
 
         for token in analysis.sentence.tokens:
+            if token.text in items_by_text:
+                # Already handled this surface form in this import
+                continue
+
             existing_item = await self._vocabulary_repo.get_by_text(token.text)
 
             if existing_item is not None:
-                items.append(existing_item)
+                items_by_text[token.text] = existing_item
                 existing += 1
             else:
                 new_item = self._dictionary.lookup(token.text)
                 await self._vocabulary_repo.save(new_item)
-                items.append(new_item)
+                items_by_text[token.text] = new_item
                 newly_created.append(new_item)
                 created += 1
+
+        items = list(items_by_text.values())
 
         if newly_created:
             await self._assign_hsk.execute(newly_created)

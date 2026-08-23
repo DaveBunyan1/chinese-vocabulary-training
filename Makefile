@@ -1,18 +1,20 @@
-.PHONY: test-db-up test-db-down test-db-logs test test-integration
+.PHONY: test-db-up test-db-down test-db-logs test test-unit test-integration test-file migrate seed-categories db-up db-down
 
 # OS-Agnostic Executable Detection
 ifeq ($(OS),Windows_NT)
     PYTHON := backend/.venv/Scripts/python.exe
     PYTEST := backend/.venv/Scripts/pytest.exe
+    ALEMBIC := backend/.venv/Scripts/alembic.exe
 else
     PYTHON := $(shell which python3 2>/dev/null || echo backend/.venv/bin/python)
     PYTEST := $(shell which pytest 2>/dev/null || echo backend/.venv/bin/pytest)
+    ALEMBIC := $(shell which alembic 2>/dev/null || echo backend/.venv/bin/alembic)
 endif
 
 DOCKER_COMPOSE := docker compose
 
 migrate:
-	backend/.venv/Scripts/alembic.exe -c backend/alembic.ini upgrade head
+	$(ALEMBIC) -c backend/alembic.ini upgrade head
 
 # Spin up the primary local development database (docker-compose.yml)
 db-up:
@@ -63,6 +65,15 @@ test-integration: test-db-up
 	$(PYTEST) backend/tests/integration -v --tb=short
 	$(MAKE) test-db-down
 
+# Run a single test file (Usage: make test-file FILE=backend/tests/unit/test_cedict.py)
+test-file: test-db-up
+	@if [ -z "$(FILE)" ]; then \
+		echo "Error: Please specify a file. Example: make test-file FILE=backend/tests/unit/test_cedict.py"; \
+		exit 1; \
+	fi
+	$(PYTEST) $(FILE) -v --tb=short
+	$(MAKE) test-db-down
+	
 # Run all tests
 test: test-db-up
 	$(PYTEST) backend/tests -v --tb=short

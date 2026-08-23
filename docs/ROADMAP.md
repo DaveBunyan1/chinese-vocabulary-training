@@ -29,7 +29,8 @@ Goal: A learner can paste Chinese text and the system builds their vocabulary + 
 ├── feat/update-knowledge-on-exposure          (with_exposure calls)
 ├── feat/assign-categories-to-vocabulary
 ├── feat/rest-api-text-import
-└── feat/frontend-text-import-and-knowledge-view
+├── feat/frontend-text-import-and-knowledge-view
+└── refactor/nlp-dictionary-pipeline
 
 
 Phase 5: Vocabulary & Character Practice (Core MVP)

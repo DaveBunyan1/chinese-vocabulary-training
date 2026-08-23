@@ -4,6 +4,7 @@ import subprocess
 import time
 from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -24,6 +25,7 @@ from chinese_learning.domain.vocabulary.vocabulary_item import (
     VocabularyId,
     VocabularyItem,
 )
+from chinese_learning.infrastructure.nlp.cedict_dictionary import CedictDictionary
 from chinese_learning.infrastructure.persistence.base import Base
 
 # Import models so they register with Base.metadata
@@ -235,6 +237,21 @@ async def db_session():
         await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
+
+
+@pytest.fixture
+def cedict_dictionary() -> CedictDictionary:
+    # Resolves to: chinese_learning/infrastructure/nlp/data/cedict.txt
+    dict_path = (
+        Path(__file__).resolve().parents[1]  # Go up to backend/
+        / "src"
+        / "chinese_learning"
+        / "infrastructure"
+        / "nlp"
+        / "data"
+        / "cedict.txt"
+    )
+    return CedictDictionary(dict_path)
 
 
 @pytest_asyncio.fixture(scope="function")
