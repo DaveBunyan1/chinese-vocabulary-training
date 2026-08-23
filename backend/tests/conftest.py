@@ -11,7 +11,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from chinese_learning.domain.category.category import Category, CategoryId
+from chinese_learning.domain.category.category import Category, CategoryId, CategoryType
 from chinese_learning.domain.identity.learner import LearnerId, LearnerProfile
 from chinese_learning.domain.identity.user import User, UserId
 from chinese_learning.domain.learner.character_knowledge import CharacterKnowledge
@@ -161,8 +161,10 @@ def make_category() -> Callable[..., Category]:
         defaults = {
             "name": "HSK 3",
             "parent_id": None,
+            "type": CategoryType.HSK,
             "sort_order": 0,
             "id": CategoryId(str(uuid4())),
+            "hsk_level": 3,
         }
         defaults.update(overrides)
         return Category(**defaults)

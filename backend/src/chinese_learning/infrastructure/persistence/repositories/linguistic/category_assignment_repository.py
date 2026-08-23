@@ -52,7 +52,7 @@ class CategoryAssignmentRepository:
     ) -> list[CategoryAssignment]:
         record_repo_metric("get_by_vocabulary", entity="category_assignment")
         stmt = select(CategoryAssignmentModel).where(
-            CategoryAssignmentModel.vocabulary_id == str(vocabulary_id)
+            CategoryAssignmentModel.vocabulary_id == vocabulary_id.value
         )
         result = await self.session.execute(stmt)
         return [category_assignment_to_domain(m) for m in result.scalars().all()]
@@ -62,7 +62,7 @@ class CategoryAssignmentRepository:
     ) -> list[CategoryAssignment]:
         record_repo_metric("get_by_category", entity="category_assignment")
         stmt = select(CategoryAssignmentModel).where(
-            CategoryAssignmentModel.category_id == str(category_id.value)
+            CategoryAssignmentModel.category_id == category_id.value
         )
         result = await self.session.execute(stmt)
         return [category_assignment_to_domain(m) for m in result.scalars().all()]
@@ -70,18 +70,16 @@ class CategoryAssignmentRepository:
     async def delete(self, assignment: CategoryAssignment) -> None:
         record_repo_metric("delete", entity="category_assignment")
         stmt = delete(CategoryAssignmentModel).where(
-            CategoryAssignmentModel.category_id == str(assignment.category_id.value),
-            CategoryAssignmentModel.vocabulary_id
-            == str(assignment.vocabulary_id.value),
+            CategoryAssignmentModel.category_id == assignment.category_id.value,
+            CategoryAssignmentModel.vocabulary_id == assignment.vocabulary_id.value,
         )
         await self.session.execute(stmt)
 
     async def exists(self, assignment: CategoryAssignment) -> bool:
         record_repo_metric("exists", entity="category_assignment")
-        stmt = select(func.count(1)).where(
-            CategoryAssignmentModel.category_id == str(assignment.category_id.value),
-            CategoryAssignmentModel.vocabulary_id
-            == str(assignment.vocabulary_id.value),
+        stmt = select(func.count()).where(
+            CategoryAssignmentModel.category_id == assignment.category_id.value,
+            CategoryAssignmentModel.vocabulary_id == assignment.vocabulary_id.value,
         )
         result = await self.session.execute(stmt)
         return bool(result.scalar_one())
