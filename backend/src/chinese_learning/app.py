@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from chinese_learning.infrastructure.telemetry.config import settings
 from chinese_learning.infrastructure.telemetry.logging import setup_logging
@@ -23,6 +24,17 @@ app = FastAPI(
     title="Chinese Learning Platform API",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # Local Vite dev server
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
