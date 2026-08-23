@@ -1,4 +1,4 @@
-from chinese_learning.domain.category.category import Category, CategoryId
+from chinese_learning.domain.category.category import Category, CategoryId, CategoryType
 from chinese_learning.domain.category.category_assignment import CategoryAssignment
 from chinese_learning.domain.vocabulary.vocabulary_item import (
     VocabularyId,
@@ -38,17 +38,21 @@ def category_to_domain(model: CategoryModel) -> Category:
     return Category(
         id=CategoryId(model.id),
         name=model.name,
+        type=CategoryType(model.type),
         parent_id=CategoryId(model.parent_id) if model.parent_id else None,
         sort_order=model.sort_order,
+        hsk_level=model.hsk_level,
     )
 
 
 def category_to_model(domain: Category) -> CategoryModel:
     return CategoryModel(
-        id=str(domain.id.value),
+        id=domain.id.value,
         name=domain.name,
-        parent_id=str(domain.parent_id.value) if domain.parent_id else None,
+        type=domain.type.value,
+        parent_id=domain.parent_id.value if domain.parent_id else None,
         sort_order=domain.sort_order,
+        hsk_level=domain.hsk_level,
     )
 
 

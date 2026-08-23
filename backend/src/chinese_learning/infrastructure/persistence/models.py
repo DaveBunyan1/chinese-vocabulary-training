@@ -13,6 +13,7 @@ from sqlalchemy import (
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
+from chinese_learning.domain.category.category import CategoryType
 from chinese_learning.domain.learner.knowledge_status import KnowledgeStatus
 from chinese_learning.infrastructure.persistence.base import Base
 
@@ -78,10 +79,16 @@ class CategoryModel(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    parent_id: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("categories.id"), nullable=True, index=True
+    type: Mapped[str] = mapped_column(
+        SQLEnum(CategoryType, values_callable=lambda x: [e.value for e in x]),  # pyright: ignore[reportUnknownLambdaType]
+        nullable=False,
+        index=True,
     )
-    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    parent_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("categories.id"), nullable=True
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    hsk_level: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
 
 class CategoryAssignmentModel(Base):
