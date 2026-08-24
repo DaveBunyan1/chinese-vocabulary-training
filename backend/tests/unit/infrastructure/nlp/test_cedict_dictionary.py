@@ -19,3 +19,10 @@ def test_single_surname_only_entry_still_returns_something(
 
     xiahou = cedict_dictionary.lookup("夏侯")
     assert "surname" in xiahou.meaning.lower()
+
+
+def test_missing_word_uses_soft_meaning(cedict_dictionary: CedictDictionary):
+    item = cedict_dictionary.lookup("坐在")
+    assert item.meaning == "—"
+    assert "[not found" not in item.meaning.lower()
+    assert item.pinyin  # still has pypinyin

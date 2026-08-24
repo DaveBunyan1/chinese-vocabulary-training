@@ -20,6 +20,8 @@ _PROPER_RE = re.compile(
     r"(?i)\b(surname|name of|place name|county|district|river|mountain)\b"
 )
 
+NOT_FOUND_MEANING = "—"
+
 
 class CedictDictionary:
     """
@@ -64,7 +66,7 @@ class CedictDictionary:
         else:
             # Fallback for words not in CEDICT
             pinyin = " ".join(lazy_pinyin(text, style=Style.TONE3))
-            meaning = "[not found in CC-CEDICT]"
+            meaning = NOT_FOUND_MEANING
 
         return VocabularyItem(
             id=VocabularyId(str(uuid4())),

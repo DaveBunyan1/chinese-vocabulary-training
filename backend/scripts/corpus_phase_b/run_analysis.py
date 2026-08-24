@@ -11,15 +11,17 @@ from chinese_learning.infrastructure.nlp.cedict_dictionary import CedictDictiona
 
 SAMPLES = Path(__file__).parent / "samples"
 OUT = Path(__file__).parent / "out"
-MISS_MARKERS = ("[not found", "not found in cc-cedict")  # adjust to your real string
+SOFT_MISS = "—"
 
 DIGIT_RE = re.compile(r"^\d+$")
 PUNCT_RE = re.compile(r"^[\W_]+$", re.UNICODE)
 
 
 def is_miss(meaning: str) -> bool:
-    m = meaning.lower()
-    return any(s in m for s in MISS_MARKERS) or not meaning.strip()
+    m = meaning.strip()
+    if m in SOFT_MISS:
+        return True
+    return False
 
 
 def is_junk(text: str) -> bool:

@@ -8,6 +8,7 @@ from chinese_learning.infrastructure.nlp.cedict_dictionary import CedictDictiona
 from chinese_learning.infrastructure.nlp.text_analysis_result import (
     TextAnalysisResult,
 )
+from chinese_learning.infrastructure.nlp.token_filters import is_studyable_chinese_token
 from chinese_learning.infrastructure.persistence.repositories.linguistic.vocabulary_item_repository import (
     VocabularyItemRepository,
 )
@@ -43,8 +44,12 @@ class ImportVocabularyFromText:
         created = 0
         existing = 0
         newly_created: list[VocabularyItem] = []
+        skipped = 0
 
         for token in analysis.sentence.tokens:
+            if not is_studyable_chinese_token(token.text):
+                skipped += 1
+                continue
             if token.text in items_by_text:
                 # Already handled this surface form in this import
                 continue
