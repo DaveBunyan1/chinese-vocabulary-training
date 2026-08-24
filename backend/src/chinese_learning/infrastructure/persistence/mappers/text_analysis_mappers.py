@@ -1,5 +1,4 @@
 import json
-from typing import cast
 from uuid import uuid4
 
 from chinese_learning.domain.text_analysis.character import Character
@@ -37,9 +36,9 @@ def token_to_model(domain: Token) -> TokenModel:
 
 
 def sentence_to_domain(model: SentenceModel) -> Sentence:
-    token_texts: list[str] = json.loads(cast(str, model.tokens_json))
+    token_texts: list[str] = json.loads(model.tokens_json)
     tokens = [Token(text=t) for t in token_texts]
-    return Sentence(tokens=tokens, raw_text=cast(str, model.raw_text))
+    return Sentence(tokens=tokens, raw_text=model.raw_text)
 
 
 def sentence_to_model(
