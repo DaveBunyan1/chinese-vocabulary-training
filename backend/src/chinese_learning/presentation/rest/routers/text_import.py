@@ -75,6 +75,7 @@ async def import_text(
     hsk_lookup: HSKLookupService = Depends(get_default_hsk_lookup),
     dictionary: CedictDictionary = Depends(get_cedict_dictionary),
 ) -> TextImportResponse:
+
     vocab_repo = VocabularyItemRepository(session)
     category_repo = CategoryRepository(session)
     assignment_repo = CategoryAssignmentRepository(session)

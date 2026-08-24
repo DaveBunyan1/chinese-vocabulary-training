@@ -61,8 +61,8 @@ class SentenceModel(Base):
     __tablename__ = "sentences"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, nullable=False)
-    raw_text: Mapped[Text] = mapped_column(Text, nullable=False, index=True)
-    tokens_json: Mapped[Text] = mapped_column(Text, nullable=False)
+    raw_text: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    tokens_json: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class VocabularyItemModel(Base):
@@ -71,7 +71,7 @@ class VocabularyItemModel(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     text: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     pinyin: Mapped[str] = mapped_column(String(255), nullable=False)
-    meaning: Mapped[str] = mapped_column(String(512), nullable=False)
+    meaning: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class CategoryModel(Base):

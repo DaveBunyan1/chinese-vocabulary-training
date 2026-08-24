@@ -179,3 +179,133 @@ async def test_import_text_validation_missing_field(
 ) -> None:
     response = await async_client.post("/api/v1/imports/text", json={})
     assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Priority 1 – repeated tokens must not crash exposure updates
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_import_text_repeated_particles_does_not_crash(
+    async_client: AsyncClient,
+    db_session_populated: AsyncSession,
+) -> None:
+    """
+    Grammatical particles like 的 often repeat in one sentence.
+    Import must return 200 and write at most one knowledge row per distinct item.
+    """
+    payload = {"raw_text": "我的书的封面的颜色很好看。"}
+
+    response = await async_client.post("/api/v1/imports/text", json=payload)
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    assert data["total_tokens"] > 0
+    assert data["created_vocabulary_count"] + data["existing_vocabulary_count"] > 0
+    assert len(data["imported_items"]) > 0
+
+    # Response must not list the same vocabulary id more times than unique texts
+    # (import may still return one entry per token occurrence – either is OK
+    #  as long as DB knowledge is deduped. We assert DB side below.)
+    texts = [item["text"] for item in data["imported_items"]]
+    assert "的" in texts
+
+    vocab_records = (
+        (
+            await db_session_populated.execute(
+                select(VocabularyKnowledgeModel).where(
+                    VocabularyKnowledgeModel.learner_id == LEARNER_ID
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    char_records = (
+        (
+            await db_session_populated.execute(
+                select(CharacterKnowledgeModel).where(
+                    CharacterKnowledgeModel.learner_id == LEARNER_ID
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # Unique constraint safety: one row per vocabulary_id / character
+    vocab_ids = [r.vocabulary_id for r in vocab_records]
+    assert len(vocab_ids) == len(set(vocab_ids))
+
+    char_values = [r.character_literal for r in char_records]
+    assert len(char_values) == len(set(char_values))
+
+    # Counts reported by API should match unique knowledge rows
+    assert data["updated_vocabulary_knowledge_count"] == len(vocab_records)
+    assert data["updated_character_knowledge_count"] == len(char_records)
+
+
+@pytest.mark.asyncio
+async def test_import_text_only_repeated_particle(
+    async_client: AsyncClient,
+    db_session_populated: AsyncSession,
+) -> None:
+    """Extreme case: the same token repeated with no other content variety."""
+    payload = {"raw_text": "的的的"}
+
+    response = await async_client.post("/api/v1/imports/text", json=payload)
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    vocab_records = (
+        (
+            await db_session_populated.execute(
+                select(VocabularyKnowledgeModel).where(
+                    VocabularyKnowledgeModel.learner_id == LEARNER_ID
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(vocab_records) == data["updated_vocabulary_knowledge_count"]
+    assert len(vocab_records) >= 1
+    assert len({r.vocabulary_id for r in vocab_records}) == len(vocab_records)
+
+
+@pytest.mark.asyncio
+async def test_import_text_repeated_words_second_import_still_ok(
+    async_client: AsyncClient,
+    db_session_populated: AsyncSession,
+) -> None:
+    """Dedupe must remain safe across a second import of the same repetitive text."""
+    payload = {"raw_text": "我的我的我的"}
+
+    res1 = await async_client.post("/api/v1/imports/text", json=payload)
+    assert res1.status_code == 200, res1.text
+    data1 = res1.json()
+
+    res2 = await async_client.post("/api/v1/imports/text", json=payload)
+    assert res2.status_code == 200, res2.text
+    data2 = res2.json()
+
+    # First run creates; second should mostly hit existing vocabulary
+    assert data1["created_vocabulary_count"] > 0
+    assert data2["created_vocabulary_count"] == 0
+    assert data2["existing_vocabulary_count"] == data1["created_vocabulary_count"]
+
+    vocab_records = (
+        (
+            await db_session_populated.execute(
+                select(VocabularyKnowledgeModel).where(
+                    VocabularyKnowledgeModel.learner_id == LEARNER_ID
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len({r.vocabulary_id for r in vocab_records}) == len(vocab_records)
