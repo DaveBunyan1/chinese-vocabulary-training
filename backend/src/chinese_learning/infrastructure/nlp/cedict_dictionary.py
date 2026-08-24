@@ -111,3 +111,9 @@ class CedictDictionary:
             key=lambda pair: (score(pair[1]), -pair[0]),
         )
         return best[1]
+
+    def known_words(self) -> set[str]:
+        return set(self._entries.keys())
+
+    def contains(self, text: str) -> bool:
+        return text.strip() in self._entries

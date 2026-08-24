@@ -5,6 +5,7 @@ from chinese_learning.domain.identity.learner import LearnerId
 from chinese_learning.domain.vocabulary.vocabulary_item import VocabularyItem
 from chinese_learning.infrastructure.nlp.analyse_text import AnalyseText
 from chinese_learning.infrastructure.nlp.cedict_dictionary import CedictDictionary
+from chinese_learning.infrastructure.nlp.cedict_segment import max_match_segment
 from chinese_learning.infrastructure.nlp.text_analysis_result import (
     TextAnalysisResult,
 )
@@ -39,35 +40,41 @@ class ImportVocabularyFromText:
         self, learner_id: LearnerId, raw_text: str
     ) -> ImportVocabularyResult:
         analysis = self._analyse_text.execute(raw_text)
+        lexicon = self._dictionary.known_words()
 
         items_by_text: dict[str, VocabularyItem] = {}
         created = 0
         existing = 0
         newly_created: list[VocabularyItem] = []
-        skipped = 0
 
         for token in analysis.sentence.tokens:
             if not is_studyable_chinese_token(token.text):
-                skipped += 1
-                continue
-            if token.text in items_by_text:
-                # Already handled this surface form in this import
                 continue
 
-            existing_item = await self._vocabulary_repo.get_by_text(token.text)
-
-            if existing_item is not None:
-                items_by_text[token.text] = existing_item
-                existing += 1
+            # Expand misses into CEDICT-backed pieces; keep hits as-is
+            if self._dictionary.contains(token.text):
+                surfaces = [token.text]
             else:
-                new_item = self._dictionary.lookup(token.text)
-                await self._vocabulary_repo.save(new_item)
-                items_by_text[token.text] = new_item
-                newly_created.append(new_item)
-                created += 1
+                surfaces = max_match_segment(token.text, lexicon)
+                # Optional: if segmentation is a no-op single unknown char, still import once
+                surfaces = [s for s in surfaces if is_studyable_chinese_token(s)]
+
+            for surface in surfaces:
+                if surface in items_by_text:
+                    continue
+
+                existing_item = await self._vocabulary_repo.get_by_text(surface)
+                if existing_item is not None:
+                    items_by_text[surface] = existing_item
+                    existing += 1
+                else:
+                    new_item = self._dictionary.lookup(surface)
+                    await self._vocabulary_repo.save(new_item)
+                    items_by_text[surface] = new_item
+                    newly_created.append(new_item)
+                    created += 1
 
         items = list(items_by_text.values())
-
         if newly_created:
             await self._assign_hsk.execute(newly_created)
 

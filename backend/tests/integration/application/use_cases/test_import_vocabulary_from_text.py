@@ -99,3 +99,23 @@ async def test_mixed_new_and_existing_without_duplicate_items(
     assert result.existing_count == 1  # 我 (counted once, not twice)
     assert len(result.vocabulary_items) == 2
     assert {i.text for i in result.vocabulary_items} == {"我", "的"}
+
+
+@pytest.mark.asyncio
+async def test_compound_miss_is_split_into_known_parts(
+    use_case: ImportVocabularyFromText,
+):
+    result = await use_case.execute(LEARNER_ID, "坐在")
+    texts = {i.text for i in result.vocabulary_items}
+    assert "坐在" not in texts
+    assert "坐" in texts and "在" in texts
+    assert all(
+        i.meaning != "—" for i in result.vocabulary_items if i.text in {"坐", "在"}
+    )
+
+
+@pytest.mark.asyncio
+async def test_known_compound_not_split(use_case: ImportVocabularyFromText):
+    result = await use_case.execute(LEARNER_ID, "中国")
+    texts = [i.text for i in result.vocabulary_items]
+    assert "中国" in texts
