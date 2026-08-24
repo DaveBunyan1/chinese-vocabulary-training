@@ -7,8 +7,14 @@ services:
       POSTGRES_DB: chinese_learning_test
     ports:
       - "5433:5432"
+    networks:
+      - test-chinese-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U chinese -d chinese_learning_test"]
       interval: 2s
       timeout: 5s
       retries: 10
+
+networks:
+  test-chinese-network:
+    driver: bridge
