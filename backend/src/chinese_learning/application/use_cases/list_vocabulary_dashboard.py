@@ -4,8 +4,6 @@ List vocabulary items for a learner with optional filters.
 Returns dashboard rows combining VocabularyItem + VocabularyKnowledge + categories.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from chinese_learning.domain.category.category import Category, CategoryId, CategoryType
@@ -104,11 +102,11 @@ class ListVocabularyDashboard:
                 status_counts=status_counts,
             )
 
-        knowledge_by_vid = {str(k.vocabulary_id): k for k in knowledge_list}
+        knowledge_by_vid = {k.vocabulary_id: k for k in knowledge_list}
         vids = [k.vocabulary_id for k in knowledge_list]
 
         items = await self._item_repo.get_many(vids)
-        items_by_id = {str(i.id): i for i in items}
+        items_by_id = {i.id: i for i in items}
 
         all_categories = await self._category_repo.get_all()
         categories_by_id = {str(c.id): c for c in all_categories}
@@ -122,7 +120,7 @@ class ListVocabularyDashboard:
         # Optional category filter
         if category_id is not None:
             allowed = {
-                a.vocabulary_id.value
+                a.vocabulary_id
                 for a in await self._assignment_repo.get_by_category(category_id)
             }
             knowledge_by_vid = {
@@ -139,7 +137,10 @@ class ListVocabularyDashboard:
             knowledge_by_vid = {
                 vid: k
                 for vid, k in knowledge_by_vid.items()
-                if any(str(cid) in hsk_cats for cid in assignments_by_vid.get(vid, []))
+                if any(
+                    str(cid) in hsk_cats
+                    for cid in assignments_by_vid.get(vid.value, [])
+                )
             }
 
         # Optional text/pinyin/meaning search
@@ -154,7 +155,7 @@ class ListVocabularyDashboard:
                 continue
 
             cat_summaries, hsk = self._categories_for(
-                assignments_by_vid.get(vid, []),
+                assignments_by_vid.get(vid.value, []),
                 categories_by_id,
             )
             rows.append(self._to_row(item, knowledge, cat_summaries, hsk))
