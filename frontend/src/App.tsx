@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { BookOpen, Brain } from "lucide-react";
+import { BookOpen, Brain, LayoutList } from "lucide-react";
 
 import { TextImportView } from "./components/TextImportView";
 import { PracticeSessionView } from "./components/PracticeSessionView";
+import { VocabularyDashboardView } from "./components/VocabularyDashboardView";
 
-type Tab = "import" | "practice";
+type Tab = "import" | "practice" | "vocabulary";
 
 function App() {
   const [tab, setTab] = useState<Tab>("import");
@@ -12,12 +13,18 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50">
       <nav className="border-b bg-white">
-        <div className="max-w-4xl mx-auto px-6 flex gap-1">
+        <div className="max-w-5xl mx-auto px-6 flex gap-1">
           <TabButton
             active={tab === "import"}
             onClick={() => setTab("import")}
             icon={<BookOpen className="w-4 h-4" />}
             label="Build knowledge"
+          />
+          <TabButton
+            active={tab === "vocabulary"}
+            onClick={() => setTab("vocabulary")}
+            icon={<LayoutList className="w-4 h-4" />}
+            label="Vocabulary"
           />
           <TabButton
             active={tab === "practice"}
@@ -29,7 +36,9 @@ function App() {
       </nav>
 
       <main>
-        {tab === "import" ? <TextImportView /> : <PracticeSessionView />}
+        {tab === "import" && <TextImportView />}
+        {tab === "vocabulary" && <VocabularyDashboardView />}
+        {tab === "practice" && <PracticeSessionView />}
       </main>
     </div>
   );
