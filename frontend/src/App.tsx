@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  BarChart3,
   BookOpen,
   Brain,
   FolderTree,
@@ -12,8 +13,15 @@ import { PracticeSessionView } from "./components/PracticeSessionView";
 import { VocabularyDashboardView } from "./components/VocabularyDashboardView";
 import { CharacterDashboardView } from "./components/CharacterDashboardView";
 import { CategoryManagementView } from "./components/CategoryManagementView";
+import { ProgressStatsView } from "./components/ProgressStatsView";
 
-type Tab = "import" | "practice" | "vocabulary" | "characters" | "categories";
+type Tab =
+  | "import"
+  | "practice"
+  | "vocabulary"
+  | "characters"
+  | "categories"
+  | "progress";
 
 function App() {
   const [tab, setTab] = useState<Tab>("import");
@@ -52,6 +60,12 @@ function App() {
             icon={<Brain className="w-4 h-4" />}
             label="Practice"
           />
+          <TabButton
+            active={tab === "progress"}
+            onClick={() => setTab("progress")}
+            icon={<BarChart3 className="w-4 h-4" />}
+            label="Progress"
+          />
         </div>
       </nav>
 
@@ -61,6 +75,7 @@ function App() {
         {tab === "characters" && <CharacterDashboardView />}
         {tab === "categories" && <CategoryManagementView />}
         {tab === "practice" && <PracticeSessionView />}
+        {tab === "progress" && <ProgressStatsView />}
       </main>
     </div>
   );
