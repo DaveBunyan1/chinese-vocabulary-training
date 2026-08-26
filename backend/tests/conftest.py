@@ -20,6 +20,13 @@ from chinese_learning.domain.identity.user import User, UserId
 from chinese_learning.domain.learner.character_knowledge import CharacterKnowledge
 from chinese_learning.domain.learner.knowledge_status import KnowledgeStatus
 from chinese_learning.domain.learner.vocabulary_knowledge import VocabularyKnowledge
+from chinese_learning.domain.practice.exercise import (
+    Exercise,
+    ExerciseId,
+    ExerciseStatus,
+    ExerciseType,
+)
+from chinese_learning.domain.practice.question import Question, QuestionId, QuestionType
 from chinese_learning.domain.text_analysis.character import Character
 from chinese_learning.domain.vocabulary.vocabulary_item import (
     VocabularyId,
@@ -319,3 +326,46 @@ async def async_client(
         yield client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def make_question() -> Callable[..., Question]:
+    def _factory(**overrides: Any) -> Question:
+        defaults: dict[str, Any] = {
+            "id": QuestionId(str(uuid4())),
+            "type": QuestionType.VOCABULARY_RECALL,
+            "order": 0,
+            "prompt": "What does 你好 mean?",
+            "correct_answers": ("hello",),
+            "vocabulary_id": VocabularyId("vocab-1"),
+            "character": None,
+            "options": (),
+        }
+        defaults.update(overrides)
+        return Question(**defaults)
+
+    return _factory
+
+
+@pytest.fixture
+def make_exercise(
+    make_question: Callable[..., Question],
+) -> Callable[..., Exercise]:
+    def _factory(**overrides: Any) -> Exercise:
+        default_question = make_question()
+        defaults: dict[str, Any] = {
+            "id": ExerciseId(str(uuid4())),
+            "learner_id": LearnerId("learner-1"),
+            "type": ExerciseType.VOCABULARY_RECALL,
+            "status": ExerciseStatus.PENDING,
+            "questions": (default_question,),
+            "created_at": datetime(2026, 8, 26, 12, 0, 0, tzinfo=UTC),
+            "category_id": None,
+            "knowledge_status_filter": None,
+            "started_at": None,
+            "completed_at": None,
+        }
+        defaults.update(overrides)
+        return Exercise(**defaults)
+
+    return _factory
