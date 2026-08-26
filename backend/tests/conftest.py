@@ -20,6 +20,10 @@ from chinese_learning.domain.identity.user import User, UserId
 from chinese_learning.domain.learner.character_knowledge import CharacterKnowledge
 from chinese_learning.domain.learner.knowledge_status import KnowledgeStatus
 from chinese_learning.domain.learner.vocabulary_knowledge import VocabularyKnowledge
+from chinese_learning.domain.practice.answer_attempt import (
+    AnswerAttempt,
+    AnswerAttemptId,
+)
 from chinese_learning.domain.practice.exercise import (
     Exercise,
     ExerciseId,
@@ -367,5 +371,24 @@ def make_exercise(
         }
         defaults.update(overrides)
         return Exercise(**defaults)
+
+    return _factory
+
+
+@pytest.fixture
+def make_answer_attempt() -> Callable[..., AnswerAttempt]:
+    def _factory(**overrides: Any) -> AnswerAttempt:
+        defaults: dict[str, Any] = {
+            "id": AnswerAttemptId(str(uuid4())),
+            "exercise_id": ExerciseId("ex-1"),
+            "question_id": QuestionId("q-1"),
+            "learner_id": LearnerId("learner-1"),
+            "raw_answer": "hello",
+            "is_correct": True,
+            "answered_at": datetime(2026, 8, 26, 14, 0, 0, tzinfo=UTC),
+            "response_time_ms": None,
+        }
+        defaults.update(overrides)
+        return AnswerAttempt(**defaults)
 
     return _factory
