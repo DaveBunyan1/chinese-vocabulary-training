@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { BookOpen, Brain, LayoutList } from "lucide-react";
+import { BookOpen, Brain, Languages, LayoutList } from "lucide-react";
 
 import { TextImportView } from "./components/TextImportView";
 import { PracticeSessionView } from "./components/PracticeSessionView";
 import { VocabularyDashboardView } from "./components/VocabularyDashboardView";
+import { CharacterDashboardView } from "./components/CharacterDashboardView";
 
-type Tab = "import" | "practice" | "vocabulary";
+type Tab = "import" | "practice" | "vocabulary" | "characters";
 
 function App() {
   const [tab, setTab] = useState<Tab>("import");
@@ -13,7 +14,7 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50">
       <nav className="border-b bg-white">
-        <div className="max-w-5xl mx-auto px-6 flex gap-1">
+        <div className="max-w-5xl mx-auto px-6 flex gap-1 overflow-x-auto">
           <TabButton
             active={tab === "import"}
             onClick={() => setTab("import")}
@@ -27,6 +28,12 @@ function App() {
             label="Vocabulary"
           />
           <TabButton
+            active={tab === "characters"}
+            onClick={() => setTab("characters")}
+            icon={<Languages className="w-4 h-4" />}
+            label="Characters"
+          />
+          <TabButton
             active={tab === "practice"}
             onClick={() => setTab("practice")}
             icon={<Brain className="w-4 h-4" />}
@@ -38,6 +45,7 @@ function App() {
       <main>
         {tab === "import" && <TextImportView />}
         {tab === "vocabulary" && <VocabularyDashboardView />}
+        {tab === "characters" && <CharacterDashboardView />}
         {tab === "practice" && <PracticeSessionView />}
       </main>
     </div>
@@ -53,7 +61,7 @@ const TabButton: React.FC<{
   <button
     type="button"
     onClick={onClick}
-    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
+    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap ${
       active
         ? "border-indigo-600 text-indigo-700"
         : "border-transparent text-slate-500 hover:text-slate-700"
