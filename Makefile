@@ -78,3 +78,7 @@ test-file: test-db-up
 test: test-db-up
 	$(PYTEST) backend/tests -v --tb=short
 	$(MAKE) test-db-down
+
+restart-dev: 
+	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) up -d --build
