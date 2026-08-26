@@ -11,6 +11,7 @@ from chinese_learning.presentation.rest.routers import (
     categories,
     character_dashboard,
     practice,
+    progress,
     text_import,
     vocabulary_dashboard,
 )
@@ -54,3 +55,4 @@ app.include_router(practice.router, prefix="/api/v1")
 app.include_router(vocabulary_dashboard.router, prefix="/api/v1")
 app.include_router(character_dashboard.router, prefix="/api/v1")
 app.include_router(categories.router, prefix="/api/v1")
+app.include_router(progress.router, prefix="/api/v1")
