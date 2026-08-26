@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from chinese_learning.infrastructure.telemetry.config import settings
 from chinese_learning.infrastructure.telemetry.logging import setup_logging
 from chinese_learning.presentation.rest.routers import (
+    categories,
     character_dashboard,
     practice,
     text_import,
@@ -52,3 +53,4 @@ app.include_router(text_import.router, prefix="/api/v1")
 app.include_router(practice.router, prefix="/api/v1")
 app.include_router(vocabulary_dashboard.router, prefix="/api/v1")
 app.include_router(character_dashboard.router, prefix="/api/v1")
+app.include_router(categories.router, prefix="/api/v1")
