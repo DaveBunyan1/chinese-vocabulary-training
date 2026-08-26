@@ -1,12 +1,19 @@
 import { useState } from "react";
-import { BookOpen, Brain, Languages, LayoutList } from "lucide-react";
+import {
+  BookOpen,
+  Brain,
+  FolderTree,
+  Languages,
+  LayoutList,
+} from "lucide-react";
 
 import { TextImportView } from "./components/TextImportView";
 import { PracticeSessionView } from "./components/PracticeSessionView";
 import { VocabularyDashboardView } from "./components/VocabularyDashboardView";
 import { CharacterDashboardView } from "./components/CharacterDashboardView";
+import { CategoryManagementView } from "./components/CategoryManagementView";
 
-type Tab = "import" | "practice" | "vocabulary" | "characters";
+type Tab = "import" | "practice" | "vocabulary" | "characters" | "categories";
 
 function App() {
   const [tab, setTab] = useState<Tab>("import");
@@ -34,6 +41,12 @@ function App() {
             label="Characters"
           />
           <TabButton
+            active={tab === "categories"}
+            onClick={() => setTab("categories")}
+            icon={<FolderTree className="w-4 h-4" />}
+            label="Categories"
+          />
+          <TabButton
             active={tab === "practice"}
             onClick={() => setTab("practice")}
             icon={<Brain className="w-4 h-4" />}
@@ -46,6 +59,7 @@ function App() {
         {tab === "import" && <TextImportView />}
         {tab === "vocabulary" && <VocabularyDashboardView />}
         {tab === "characters" && <CharacterDashboardView />}
+        {tab === "categories" && <CategoryManagementView />}
         {tab === "practice" && <PracticeSessionView />}
       </main>
     </div>
