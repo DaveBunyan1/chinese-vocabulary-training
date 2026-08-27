@@ -337,7 +337,7 @@ export const SmartReviewView: React.FC = () => {
             <p className="text-sm uppercase tracking-wide text-slate-400">
               Prompt
             </p>
-            <p className="text-4xl font-bold text-slate-900 break-words">
+            <p className="text-4xl font-bold text-slate-900 wrap-break-word">
               {currentQuestion.prompt}
             </p>
 
