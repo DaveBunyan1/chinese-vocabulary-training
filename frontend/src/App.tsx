@@ -6,6 +6,7 @@ import {
   FolderTree,
   Languages,
   LayoutList,
+  Sparkles,
 } from "lucide-react";
 
 import { TextImportView } from "./components/TextImportView";
@@ -14,6 +15,7 @@ import { VocabularyDashboardView } from "./components/VocabularyDashboardView";
 import { CharacterDashboardView } from "./components/CharacterDashboardView";
 import { CategoryManagementView } from "./components/CategoryManagementView";
 import { ProgressStatsView } from "./components/ProgressStatsView";
+import { SmartReviewView } from "./components/SmartReviewView";
 
 type Tab =
   | "import"
@@ -21,7 +23,8 @@ type Tab =
   | "vocabulary"
   | "characters"
   | "categories"
-  | "progress";
+  | "progress"
+  | "review";
 
 function App() {
   const [tab, setTab] = useState<Tab>("import");
@@ -55,6 +58,12 @@ function App() {
             label="Categories"
           />
           <TabButton
+            active={tab === "review"}
+            onClick={() => setTab("review")}
+            icon={<Sparkles className="w-4 h-4" />}
+            label="Smart review"
+          />
+          <TabButton
             active={tab === "practice"}
             onClick={() => setTab("practice")}
             icon={<Brain className="w-4 h-4" />}
@@ -74,6 +83,7 @@ function App() {
         {tab === "vocabulary" && <VocabularyDashboardView />}
         {tab === "characters" && <CharacterDashboardView />}
         {tab === "categories" && <CategoryManagementView />}
+        {tab === "review" && <SmartReviewView />}
         {tab === "practice" && <PracticeSessionView />}
         {tab === "progress" && <ProgressStatsView />}
       </main>
