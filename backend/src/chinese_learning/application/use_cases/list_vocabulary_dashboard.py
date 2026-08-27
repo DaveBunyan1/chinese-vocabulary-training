@@ -55,7 +55,9 @@ class VocabularyDashboardRow:
 class ListVocabularyDashboardResult:
     items: tuple[VocabularyDashboardRow, ...]
     total: int
-    status_counts: dict[str, int]  # new/learning/known → count (unfiltered by status)
+    status_counts: dict[
+        str, int
+    ]  # new/learning/known within current scope (after category/HSK/search; before status filter)
 
 
 class ListVocabularyDashboard:
@@ -84,22 +86,23 @@ class ListVocabularyDashboard:
         hsk_level: int | None = None,
         search: str | None = None,
     ) -> ListVocabularyDashboardResult:
-        # Status counts always reflect the full learner profile (pre-status-filter)
-        raw_counts = await self._knowledge_repo.count_by_status(learner_id)
-        status_counts = {s.value: int(c) for s, c in raw_counts.items()}
-        for key in ("new", "learning", "known"):
-            status_counts.setdefault(key, 0)
+        """
+        Build dashboard rows for one learner.
 
-        # TODO: fix in vocabulary_knowledge_repository.py
+        Filter order:
+        1. Load all knowledge for the learner
+        2. Apply category / HSK / search scope filters
+        3. Compute status_counts from that scoped set (so chips match the list)
+        4. Apply knowledge_status filter only to the returned items
+        """
         knowledge_list = await self._knowledge_repo.get_all_for_learner(learner_id)
-        if knowledge_status is not None:
-            knowledge_list = [k for k in knowledge_list if k.status is knowledge_status]
 
+        empty_counts = {"new": 0, "learning": 0, "known": 0}
         if not knowledge_list:
             return ListVocabularyDashboardResult(
                 items=(),
                 total=0,
-                status_counts=status_counts,
+                status_counts=empty_counts,
             )
 
         # Key knowledge by string id so lookups stay consistent across repos/mappers
@@ -150,7 +153,8 @@ class ListVocabularyDashboard:
         # Optional text/pinyin/meaning search
         needle = search.strip().casefold() if search else None
 
-        rows: list[VocabularyDashboardRow] = []
+        # Build scoped rows (before knowledge-status filter)
+        scoped_rows: list[VocabularyDashboardRow] = []
         for vid_key, knowledge in knowledge_by_vid.items():
             item = items_by_id.get(vid_key)
             if item is None:
@@ -162,13 +166,24 @@ class ListVocabularyDashboard:
                 assignments_by_vid.get(vid_key, []),
                 categories_by_id,
             )
-            # Belt-and-suspenders: if an HSK filter is active, only keep rows
-            # whose derived hsk_level matches (covers edge cases in assignment data)
             if hsk_level is not None and hsk != hsk_level:
                 continue
-            rows.append(self._to_row(item, knowledge, cat_summaries, hsk))
+            scoped_rows.append(self._to_row(item, knowledge, cat_summaries, hsk))
 
-        # Stable sort: text ascending
+        # Chip counts reflect the scoped set (HSK / category / search), not the
+        # full profile — so "All (5)" matches five visible words after an HSK filter.
+        status_counts = {"new": 0, "learning": 0, "known": 0}
+        for row in scoped_rows:
+            if row.status in status_counts:
+                status_counts[row.status] += 1
+
+        # Status filter only narrows the list, not the chip totals
+        if knowledge_status is not None:
+            wanted = knowledge_status.value
+            rows = [r for r in scoped_rows if r.status == wanted]
+        else:
+            rows = scoped_rows
+
         rows.sort(key=lambda r: r.text)
 
         return ListVocabularyDashboardResult(

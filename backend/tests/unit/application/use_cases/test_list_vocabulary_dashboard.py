@@ -229,6 +229,10 @@ async def test_filters_by_hsk_level(
     assert result.total == 1
     assert result.items[0].text == "一"
     assert result.items[0].hsk_level == 1
+    # Only the HSK-1 item is in scope → one learning chip
+    assert result.status_counts["learning"] == 1
+    assert result.status_counts["new"] == 0
+    assert result.status_counts["known"] == 0
 
 
 @pytest.mark.asyncio
@@ -256,8 +260,10 @@ async def test_hsk_filter_returns_empty_when_no_matching_level(
 
     assert result.total == 0
     assert result.items == ()
-    # Status counts remain full-profile
-    assert result.status_counts["learning"] == 1
+    # Status counts follow the scoped (filtered) set
+    assert result.status_counts["learning"] == 0
+    assert result.status_counts["new"] == 0
+    assert result.status_counts["known"] == 0
 
 
 @pytest.mark.asyncio
@@ -303,6 +309,10 @@ async def test_hsk_filter_keeps_only_matching_level_among_many(
     assert result.total == 1
     assert result.items[0].text == "一"
     assert result.items[0].hsk_level == 1
+    # Only the HSK-1 item is in scope → one learning chip
+    assert result.status_counts["learning"] == 1
+    assert result.status_counts["new"] == 0
+    assert result.status_counts["known"] == 0
 
 
 @pytest.mark.asyncio
