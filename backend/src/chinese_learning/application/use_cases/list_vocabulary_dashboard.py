@@ -55,7 +55,9 @@ class VocabularyDashboardRow:
 class ListVocabularyDashboardResult:
     items: tuple[VocabularyDashboardRow, ...]
     total: int
-    status_counts: dict[str, int]  # new/learning/known → count (unfiltered by status)
+    status_counts: dict[
+        str, int
+    ]  # new/learning/known within current scope (after category/HSK/search; before status filter)
 
 
 class ListVocabularyDashboard:
@@ -84,34 +86,38 @@ class ListVocabularyDashboard:
         hsk_level: int | None = None,
         search: str | None = None,
     ) -> ListVocabularyDashboardResult:
-        # Status counts always reflect the full learner profile (pre-status-filter)
-        raw_counts = await self._knowledge_repo.count_by_status(learner_id)
-        status_counts = {s.value: int(c) for s, c in raw_counts.items()}
-        for key in ("new", "learning", "known"):
-            status_counts.setdefault(key, 0)
+        """
+        Build dashboard rows for one learner.
 
-        # TODO: fix in vocabulary_knowledge_repository.py
+        Filter order:
+        1. Load all knowledge for the learner
+        2. Apply category / HSK / search scope filters
+        3. Compute status_counts from that scoped set (so chips match the list)
+        4. Apply knowledge_status filter only to the returned items
+        """
         knowledge_list = await self._knowledge_repo.get_all_for_learner(learner_id)
-        if knowledge_status is not None:
-            knowledge_list = [k for k in knowledge_list if k.status is knowledge_status]
 
+        empty_counts = {"new": 0, "learning": 0, "known": 0}
         if not knowledge_list:
             return ListVocabularyDashboardResult(
                 items=(),
                 total=0,
-                status_counts=status_counts,
+                status_counts=empty_counts,
             )
 
-        knowledge_by_vid = {k.vocabulary_id: k for k in knowledge_list}
+        # Key knowledge by string id so lookups stay consistent across repos/mappers
+        knowledge_by_vid: dict[str, VocabularyKnowledge] = {
+            str(k.vocabulary_id): k for k in knowledge_list
+        }
         vids = [k.vocabulary_id for k in knowledge_list]
 
         items = await self._item_repo.get_many(vids)
-        items_by_id = {i.id: i for i in items}
+        items_by_id = {str(i.id): i for i in items}
 
         all_categories = await self._category_repo.get_all()
         categories_by_id = {str(c.id): c for c in all_categories}
 
-        # Assignments per vocabulary id
+        # Assignments per vocabulary id (string keys)
         assignments_by_vid: dict[str, list[CategoryId]] = {str(v): [] for v in vids}
         for vid in vids:
             for a in await self._assignment_repo.get_by_vocabulary(vid):
@@ -120,47 +126,64 @@ class ListVocabularyDashboard:
         # Optional category filter
         if category_id is not None:
             allowed = {
-                a.vocabulary_id
+                str(a.vocabulary_id)
                 for a in await self._assignment_repo.get_by_category(category_id)
             }
             knowledge_by_vid = {
-                k: v for k, v in knowledge_by_vid.items() if k in allowed
+                vid_key: k
+                for vid_key, k in knowledge_by_vid.items()
+                if vid_key in allowed
             }
 
-        # Optional HSK level filter (via HSK category assignments)
+        # Optional HSK level filter (via assigned HSK categories)
         if hsk_level is not None:
-            hsk_cats = {
+            hsk_cat_ids = {
                 str(c.id)
                 for c in all_categories
-                if c.type is CategoryType.HSK and c.hsk_level == hsk_level
+                if c.type == CategoryType.HSK and c.hsk_level == hsk_level
             }
             knowledge_by_vid = {
-                vid: k
-                for vid, k in knowledge_by_vid.items()
-                if any(
-                    str(cid) in hsk_cats
-                    for cid in assignments_by_vid.get(vid.value, [])
+                vid_key: k
+                for vid_key, k in knowledge_by_vid.items()
+                if hsk_cat_ids.intersection(
+                    str(cid) for cid in assignments_by_vid.get(vid_key, [])
                 )
             }
 
         # Optional text/pinyin/meaning search
         needle = search.strip().casefold() if search else None
 
-        rows: list[VocabularyDashboardRow] = []
-        for vid, knowledge in knowledge_by_vid.items():
-            item = items_by_id.get(vid)
+        # Build scoped rows (before knowledge-status filter)
+        scoped_rows: list[VocabularyDashboardRow] = []
+        for vid_key, knowledge in knowledge_by_vid.items():
+            item = items_by_id.get(vid_key)
             if item is None:
                 continue
             if needle and not self._matches_search(item, needle):
                 continue
 
             cat_summaries, hsk = self._categories_for(
-                assignments_by_vid.get(vid.value, []),
+                assignments_by_vid.get(vid_key, []),
                 categories_by_id,
             )
-            rows.append(self._to_row(item, knowledge, cat_summaries, hsk))
+            if hsk_level is not None and hsk != hsk_level:
+                continue
+            scoped_rows.append(self._to_row(item, knowledge, cat_summaries, hsk))
 
-        # Stable sort: text ascending
+        # Chip counts reflect the scoped set (HSK / category / search), not the
+        # full profile — so "All (5)" matches five visible words after an HSK filter.
+        status_counts = {"new": 0, "learning": 0, "known": 0}
+        for row in scoped_rows:
+            if row.status in status_counts:
+                status_counts[row.status] += 1
+
+        # Status filter only narrows the list, not the chip totals
+        if knowledge_status is not None:
+            wanted = knowledge_status.value
+            rows = [r for r in scoped_rows if r.status == wanted]
+        else:
+            rows = scoped_rows
+
         rows.sort(key=lambda r: r.text)
 
         return ListVocabularyDashboardResult(
@@ -196,7 +219,7 @@ class ListVocabularyDashboard:
                     hsk_level=cat.hsk_level,
                 )
             )
-            if cat.type is CategoryType.HSK and cat.hsk_level is not None:
+            if cat.type == CategoryType.HSK and cat.hsk_level is not None:
                 # Prefer the lowest HSK level if multiple somehow assigned
                 if hsk_level is None or cat.hsk_level < hsk_level:
                     hsk_level = cat.hsk_level
