@@ -155,7 +155,7 @@ make test-integration
 | `make db-down`            | Stop containers and remove volumes              |
 | `make seed-categories`    | Seed default categories (requires DB)           |
 | `make test`               | Run full test suite against ephemeral test DB   |
-| `make test-unit`          | Unit tests only                                 |
+| `make test-unit`          | Unit tests only (no Docker / Postgres)          |
 | `make test-integration`   | Integration tests only                          |
 | `make test-file FILE=...` | Run a single test file                          |
 | `make lint`               | Ruff check + format check + Mypy                |

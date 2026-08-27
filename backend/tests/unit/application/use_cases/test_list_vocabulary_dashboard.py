@@ -131,25 +131,29 @@ async def test_filters_by_status(
     assignment_repo: AsyncMock,
     learner_id: LearnerId,
 ) -> None:
-    v1 = _vid("v1")
-    knowledge_repo.get_by_status.return_value = [
-        _knowledge(learner_id, v1, KnowledgeStatus.NEW)
+    """Status filter is applied in the use case over get_all_for_learner results."""
+    v1, v2 = _vid("v1"), _vid("v2")
+    knowledge_repo.get_all_for_learner.return_value = [
+        _knowledge(learner_id, v1, KnowledgeStatus.NEW),
+        _knowledge(learner_id, v2, KnowledgeStatus.KNOWN),
     ]
-    knowledge_repo.count_by_status.return_value = {KnowledgeStatus.NEW: 1}
-    item_repo.get_many.return_value = [_item(v1, "学")]
+    # Status counts always reflect the full profile (pre-filter)
+    knowledge_repo.count_by_status.return_value = {
+        KnowledgeStatus.NEW: 1,
+        KnowledgeStatus.KNOWN: 1,
+    }
+    item_repo.get_many.return_value = [_item(v1, "学"), _item(v2, "好")]
     category_repo.get_all.return_value = []
     assignment_repo.get_by_vocabulary.return_value = []
 
     result = await use_case.execute(learner_id, knowledge_status=KnowledgeStatus.NEW)
-    print("RESULT:", result)
 
-    # TODO: fix so that total == 1 and items is not empty
-    # assert result.total == 0
-    # assert result.items[0].status == "new"
-    # knowledge_repo.get_by_status.assert_awaited_once_with(
-    #     learner_id, KnowledgeStatus.NEW.value
-    # )
+    assert result.total == 1
+    assert result.items[0].text == "学"
+    assert result.items[0].status == "new"
     assert result.status_counts["new"] == 1
+    assert result.status_counts["known"] == 1
+    knowledge_repo.get_all_for_learner.assert_awaited_once_with(learner_id)
 
 
 @pytest.mark.asyncio

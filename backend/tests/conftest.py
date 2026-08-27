@@ -71,9 +71,13 @@ def _is_postgres_ready() -> bool:
     return result.returncode == 0
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def postgres_container():
-    """Start the test Postgres container once per test session."""
+    """Start the test Postgres container once per session (integration tests only).
+
+    Not autouse: pure unit tests under tests/unit do not need a database.
+    Integration fixtures (db_session, db_session_populated) depend on this.
+    """
     print("\n→ Starting test Postgres container...")
     subprocess.run(
         ["docker", "compose", "-f", "docker-compose.test.yml", "up", "-d"],
@@ -224,7 +228,7 @@ def make_learner_profile() -> Callable[..., LearnerProfile]:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def db_session():
+async def db_session(postgres_container):  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType] # noqa: ARG001
 
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
@@ -266,7 +270,7 @@ def cedict_dictionary() -> CedictDictionary:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def db_session_populated():
+async def db_session_populated(postgres_container):  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType] # noqa: ARG001
 
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 

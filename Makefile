@@ -4,17 +4,19 @@
 # Tool detection – always prefer the project virtualenv when present
 # ---------------------------------------------------------------------------
 ifeq ($(OS),Windows_NT)
-    VENV_PYTHON := backend\.venv\Scripts\python.exe
-    VENV_PYTEST := backend\.venv\Scripts\pytest.exe
-    VENV_ALEMBIC := backend\.venv\Scripts\alembic.exe
-    VENV_RUFF := backend\.venv\Scripts\ruff.exe
-    VENV_MYPY := backend\.venv\Scripts\mypy.exe
+    VENV_PYTHON := backend/scripts/python.exe
+    # Fallback check for standard Windows venv structure using forward slashes:
+    VENV_PYTHON := backend/.venv/Scripts/python.exe
+    VENV_PYTEST := backend/.venv/Scripts/pytest.exe
+    VENV_ALEMBIC := backend/.venv/Scripts/alembic.exe
+    VENV_RUFF := backend/.venv/Scripts/ruff.exe
+    VENV_MYPY := backend/.venv/Scripts/mypy.exe
 else
     VENV_PYTHON := backend/.venv/bin/python
     VENV_PYTEST := backend/.venv/bin/pytest
     VENV_ALEMBIC := backend/.venv/bin/alembic
-    VENV_MYPY := backend/.venv/bin/mypy
     VENV_RUFF := backend/.venv/bin/ruff
+    VENV_MYPY := backend/.venv/bin/mypy
 endif
 
 # Prefer venv binaries if they exist, otherwise fall back to PATH
@@ -32,7 +34,7 @@ help:
 	@echo "  db-down            Stop containers and remove volumes"
 	@echo "  seed-categories    Seed default categories"
 	@echo "  test               Full test suite (ephemeral test DB)"
-	@echo "  test-unit          Unit tests only"
+	@echo "  test-unit          Unit tests only (no Docker)"
 	@echo "  test-integration   Integration tests only"
 	@echo "  test-file FILE=... Run a single test file"
 	@echo "  lint               Ruff check + format check + Mypy"
@@ -81,9 +83,9 @@ test-db-down:
 test-db-logs:
 	$(DOCKER_COMPOSE) -f docker-compose.test.yml logs -f postgres-test
 
-test-unit: test-db-up
-	$(PYTEST) backend/tests/unit -v --tb=short
-	$(MAKE) test-db-down
+# Unit tests are pure (mocks only) – no Postgres required
+test-unit:
+	$(PYTEST) backend/tests/unit -v --tb=short -m "not integration"
 
 test-integration: test-db-up
 	$(PYTEST) backend/tests/integration -v --tb=short
