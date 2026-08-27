@@ -1,115 +1,213 @@
 # Chinese Vocabulary Training
 
-A domain-driven platform designed to help Chinese learners build, organize, and track their vocabulary and character knowledge through real text analysis and structured exposure metrics.
+A domain-driven platform that helps Chinese learners build, organise, and track vocabulary and character knowledge through real-text analysis, structured exposure metrics, and adaptive practice.
 
-## Architecture & Design
+## Architecture
 
-This project applies Domain-Driven Design (DDD) and Hexagonal Architecture.
-The architectural decisions here were directly informed by lessons learned from a previous real-time audio processing app.
+This project applies **Domain-Driven Design (DDD)** and **Hexagonal (Ports & Adapters) Architecture**.
 
-[Read the Engineering Retrospective: Lessons from the Violin App](docs/reflections/0001_violin_app_lessons.md)
+Business rules live in a pure domain layer. Infrastructure (database, NLP, HTTP) is isolated behind ports so the core remains testable and framework-agnostic.
 
----
+Architectural decisions were informed by lessons from a previous real-time audio processing project:
 
-## Current Phase: Phase 4 – First Vertical Slice ("Build My Knowledge")
+→ [Engineering Retrospective: Lessons from the Violin App](docs/reflections/0001_violin_app_lessons.md)
 
-**Goal:** Allow users to paste arbitrary Chinese text to automatically extract vocabulary/characters, calculate frequency metrics, update exposure profiles, and assign categories.
+Key design documents:
 
-```text
-[ Input Text ] ──> [ Text Analyzer ] ──> [ Exposure Engine ] ──> [ Category Assignee ] ──> [ User Profile ]
-```
+| Document                                 | Description                                        |
+| ---------------------------------------- | -------------------------------------------------- |
+| [Product Vision](docs/product_vision.md) | Goals, learning activities, MVP scope              |
+| [Domain Model](docs/domain_model.md)     | Core entities, aggregates, and ubiquitous language |
+| [Architecture](docs/architecture.md)     | Layers, ports, and component boundaries            |
+| [Roadmap](docs/ROADMAP.md)               | Phased delivery plan                               |
+| [Context Map](docs/context_map.md)       | Bounded contexts                                   |
 
-### Feature Roadmap (`feat/` branches)
+## Current Status
 
-| Branch / Feature                               | Status        | Description                                                                          |
-| :--------------------------------------------- | :------------ | :----------------------------------------------------------------------------------- |
-| `feat/analyse-text-usecase`                    | _Complete_    | Tokenize text into words/characters using Jieba/HanLP pipeline with noise filtering. |
-| `feat/import-vocabulary-from-text`             | *In Progress* | Persist new words and character entities into the domain layer.                      |
-| `feat/update-knowledge-on-exposure`            | _Pending_     | Trigger `with_exposure` Domain Events to update user knowledge profiles.             |
-| `feat/assign-categories-to-vocabulary`         | _Pending_     | Tag imported vocabulary with thematic categories.                                    |
-| `feat/rest-api-text-import`                    | _Pending_     | Fast API endpoints to handle text payload ingestion.                                 |
-| `feat/frontend-text-import-and-knowledge-view` | _Pending_     | UI components for pasting text and visualizing exposure updates.                     |
+The project is past the initial vertical slice and already includes:
 
----
+- Text import & analysis (jieba + pypinyin)
+- Vocabulary & character knowledge tracking
+- Practice sessions (recall / recognition)
+- Vocabulary & character dashboards with filtering
+- Category management
+- Basic progress metrics and review queue scaffolding
 
-## Stack & Dependencies
+See `TODO.md` for known bugs and the next polish items.
 
-- **Language:** Python 3.10+
-- **NLP & Segmentation:** `jieba` (Primary lightweight tokenizer), `types-jieba` (Type stubs)
-- **Architecture:** Hexagonal / DDD
+## Stack
 
----
+| Layer    | Technology                                                                         |
+| -------- | ---------------------------------------------------------------------------------- |
+| Backend  | Python **3.14+**, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2              |
+| NLP      | jieba, pypinyin                                                                    |
+| Database | PostgreSQL 16                                                                      |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query                         |
+| Tooling  | Ruff, Mypy (strict), Pytest, pre-commit, Docker Compose, structlog + OpenTelemetry |
 
-## Getting Started
+> **Note:** The project currently targets Python 3.14. Ensure your local environment and CI runners match.
 
-### Local Setup (Without Docker)
+## Quick Start (Recommended: Docker Compose)
 
-### Prerequisites
-
-- Python 3.10+
-- `pip` and `venv` (standard Python library tools)
-
-### Installation Steps
-
-1. **Create and activate a virtual environment:**
-
-   ```bash
-   # Linux / macOS
-   python3 -m venv .venv
-   source .venv/bin/activate
-
-   # Windows (CMD / PowerShell)
-   python -m venv .venv
-   .venv\Scripts\activate
-   ```
-
-2. **Install application with development dependencies:**
-
-   ```bash
-   pip install --upgrade pip
-   pip install -e ".[dev]"
-   ```
-
-3. **Run Code Quality Checks & Tests:**
-
-   ```bash
-   # Run Linter & Formatter (Ruff)
-   ruff check .
-   ruff format . --check
-
-   # Run Type Checks (Mypy)
-   mypy src
-
-   # Run Test Suite (Pytest)
-   pytest
-   ```
-
-4. **Start the API server:**
-   ```bash
-   uvicorn chinese_learning.main:app --reload --port 8000
-   ```
-
-### Makefile Commands
-
-A cross-platform Makefile is provided in the project root to manage database lifecycles, migrations, database seeding, and testing suites.
-
-| Command               | Action                                                                                       |
-| :-------------------- | :------------------------------------------------------------------------------------------- |
-| make db-up            | "Starts Postgres via Docker, waits for health check, and runs Alembic migrations."           |
-| make db-down          | Stops the dev database and wipes persistent volumes.                                         |
-| make seed-categories  | Ensures DB is healthy and populates default categories via virtualenv script.                |
-| make test             | "Spins up isolated test DB (localhost:5433), runs all tests, and tears down test container." |
-| make test-unit        | Runs unit test suite (tests/unit).                                                           |
-| make test-integration | Runs integration test suite (tests/integration).                                             |
-
-### Docker Setup
-
-### 1. Full Stack (Backend + Database)
-
-To spin up both the FastAPI backend (with live code reload on ./backend/src) and the PostgreSQL database:
+The easiest way to run the full stack:
 
 ```bash
+# From the repository root
 docker compose up --build
 ```
 
-The API will be accessible at http://localhost:8000.
+| Service            | URL                          |
+| ------------------ | ---------------------------- |
+| Backend API        | http://localhost:8000        |
+| API docs (Swagger) | http://localhost:8000/docs   |
+| Frontend           | http://localhost:3000        |
+| Health check       | http://localhost:8000/health |
+
+The backend mounts `./backend/src` for live reload. Postgres data is persisted in a Docker volume.
+
+To stop and remove volumes:
+
+```bash
+docker compose down -v
+```
+
+## Local Development (Backend only)
+
+### Prerequisites
+
+- Python **3.14+**
+- Docker (for the database)
+- `pip` / `venv`
+
+### 1. Create a virtual environment
+
+```bash
+cd backend
+python3.14 -m venv .venv          # or python3 -m venv .venv if 3.14 is default
+
+# Linux / macOS
+source .venv/bin/activate
+
+# Windows
+.venv\Scripts\activate
+```
+
+### 2. Install the package + dev dependencies
+
+From the **repository root**:
+
+```bash
+pip install --upgrade pip
+pip install -e "./backend[dev]"
+```
+
+### 3. Start the database & run migrations
+
+```bash
+# From repository root
+make db-up
+```
+
+This starts Postgres, waits for it to become healthy, and applies Alembic migrations.
+
+Optionally seed default categories (HSK levels + topics):
+
+```bash
+make seed-categories
+```
+
+### 4. Run the API
+
+```bash
+# From repository root (with venv active)
+uvicorn chinese_learning.app:app --reload --port 8000
+```
+
+The application entrypoint is `chinese_learning.app:app` (see `backend/src/chinese_learning/app.py`).
+
+### 5. Quality checks & tests
+
+```bash
+# From backend/ (or adjust paths)
+cd backend
+ruff check .
+ruff format --check .
+mypy src
+```
+
+Full test suite (spins up an isolated test database on port 5433):
+
+```bash
+# From repository root
+make test
+# or
+make test-unit
+make test-integration
+```
+
+## Makefile Targets
+
+| Command                   | Description                                     |
+| ------------------------- | ----------------------------------------------- |
+| `make db-up`              | Start Postgres, wait for health, run migrations |
+| `make db-down`            | Stop containers and remove volumes              |
+| `make seed-categories`    | Seed default categories (requires DB)           |
+| `make test`               | Run full test suite against ephemeral test DB   |
+| `make test-unit`          | Unit tests only                                 |
+| `make test-integration`   | Integration tests only                          |
+| `make test-file FILE=...` | Run a single test file                          |
+| `make restart-dev`        | Rebuild and restart the full Docker stack       |
+
+## Frontend Development
+
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:5173 (or configured port)
+```
+
+The production frontend is served via the Docker Compose `frontend` service on port 3000. The Vite dev server is useful for rapid UI work; point it at the backend running on `:8000`.
+
+## Environment Variables
+
+Copy the example file:
+
+```bash
+cp .env.example .env
+```
+
+| Variable       | Purpose                            | Default (dev)                                                          |
+| -------------- | ---------------------------------- | ---------------------------------------------------------------------- |
+| `ENVIRONMENT`  | Runtime environment                | `development`                                                          |
+| `PORT`         | API port                           | `8000`                                                                 |
+| `LOG_LEVEL`    | Logging level                      | `INFO`                                                                 |
+| `DATABASE_URL` | Async SQLAlchemy connection string | `postgresql+asyncpg://chinese:chinese@localhost:5432/chinese_learning` |
+
+When running inside Docker Compose the `DATABASE_URL` is overridden to use the `db` service hostname.
+
+## Project Layout
+
+```
+.
+├── backend/
+│   ├── src/chinese_learning/
+│   │   ├── domain/           # Pure domain model (entities, aggregates, value objects)
+│   │   ├── application/      # Use cases & application services
+│   │   ├── infrastructure/   # Adapters (DB, NLP, telemetry)
+│   │   └── presentation/     # FastAPI routers & schemas
+│   ├── tests/
+│   ├── migrations/
+│   ├── pyproject.toml
+│   └── Dockerfile
+├── frontend/                 # React + TypeScript + Vite + Tailwind
+├── docs/                     # Architecture, domain model, ADRs, RFCs
+├── docker-compose.yml
+├── Makefile
+└── TODO.md
+```
+
+## Contributing / Next Steps
+
+See `TODO.md` for the current prioritised list of bug fixes, polish items, and upcoming enhancements.
+
+Before adding new features, the immediate focus is stabilising the existing vertical slices (dashboard filtering, definition quality, test coverage, and documentation accuracy).
