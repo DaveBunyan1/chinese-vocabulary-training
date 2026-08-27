@@ -102,16 +102,19 @@ class ListVocabularyDashboard:
                 status_counts=status_counts,
             )
 
-        knowledge_by_vid = {k.vocabulary_id: k for k in knowledge_list}
+        # Key knowledge by string id so lookups stay consistent across repos/mappers
+        knowledge_by_vid: dict[str, VocabularyKnowledge] = {
+            str(k.vocabulary_id): k for k in knowledge_list
+        }
         vids = [k.vocabulary_id for k in knowledge_list]
 
         items = await self._item_repo.get_many(vids)
-        items_by_id = {i.id: i for i in items}
+        items_by_id = {str(i.id): i for i in items}
 
         all_categories = await self._category_repo.get_all()
         categories_by_id = {str(c.id): c for c in all_categories}
 
-        # Assignments per vocabulary id
+        # Assignments per vocabulary id (string keys)
         assignments_by_vid: dict[str, list[CategoryId]] = {str(v): [] for v in vids}
         for vid in vids:
             for a in await self._assignment_repo.get_by_vocabulary(vid):
@@ -120,26 +123,27 @@ class ListVocabularyDashboard:
         # Optional category filter
         if category_id is not None:
             allowed = {
-                a.vocabulary_id
+                str(a.vocabulary_id)
                 for a in await self._assignment_repo.get_by_category(category_id)
             }
             knowledge_by_vid = {
-                k: v for k, v in knowledge_by_vid.items() if k in allowed
+                vid_key: k
+                for vid_key, k in knowledge_by_vid.items()
+                if vid_key in allowed
             }
 
-        # Optional HSK level filter (via HSK category assignments)
+        # Optional HSK level filter (via assigned HSK categories)
         if hsk_level is not None:
-            hsk_cats = {
+            hsk_cat_ids = {
                 str(c.id)
                 for c in all_categories
-                if c.type is CategoryType.HSK and c.hsk_level == hsk_level
+                if c.type == CategoryType.HSK and c.hsk_level == hsk_level
             }
             knowledge_by_vid = {
-                vid: k
-                for vid, k in knowledge_by_vid.items()
-                if any(
-                    str(cid) in hsk_cats
-                    for cid in assignments_by_vid.get(vid.value, [])
+                vid_key: k
+                for vid_key, k in knowledge_by_vid.items()
+                if hsk_cat_ids.intersection(
+                    str(cid) for cid in assignments_by_vid.get(vid_key, [])
                 )
             }
 
@@ -147,17 +151,21 @@ class ListVocabularyDashboard:
         needle = search.strip().casefold() if search else None
 
         rows: list[VocabularyDashboardRow] = []
-        for vid, knowledge in knowledge_by_vid.items():
-            item = items_by_id.get(vid)
+        for vid_key, knowledge in knowledge_by_vid.items():
+            item = items_by_id.get(vid_key)
             if item is None:
                 continue
             if needle and not self._matches_search(item, needle):
                 continue
 
             cat_summaries, hsk = self._categories_for(
-                assignments_by_vid.get(vid.value, []),
+                assignments_by_vid.get(vid_key, []),
                 categories_by_id,
             )
+            # Belt-and-suspenders: if an HSK filter is active, only keep rows
+            # whose derived hsk_level matches (covers edge cases in assignment data)
+            if hsk_level is not None and hsk != hsk_level:
+                continue
             rows.append(self._to_row(item, knowledge, cat_summaries, hsk))
 
         # Stable sort: text ascending
@@ -196,7 +204,7 @@ class ListVocabularyDashboard:
                     hsk_level=cat.hsk_level,
                 )
             )
-            if cat.type is CategoryType.HSK and cat.hsk_level is not None:
+            if cat.type == CategoryType.HSK and cat.hsk_level is not None:
                 # Prefer the lowest HSK level if multiple somehow assigned
                 if hsk_level is None or cat.hsk_level < hsk_level:
                     hsk_level = cat.hsk_level

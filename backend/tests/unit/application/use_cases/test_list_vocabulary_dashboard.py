@@ -232,6 +232,80 @@ async def test_filters_by_hsk_level(
 
 
 @pytest.mark.asyncio
+async def test_hsk_filter_returns_empty_when_no_matching_level(
+    use_case: ListVocabularyDashboard,
+    knowledge_repo: AsyncMock,
+    item_repo: AsyncMock,
+    category_repo: AsyncMock,
+    assignment_repo: AsyncMock,
+    learner_id: LearnerId,
+) -> None:
+    v1 = _vid("v1")
+    hsk1 = CategoryId("hsk-1")
+    knowledge_repo.get_all_for_learner.return_value = [_knowledge(learner_id, v1)]
+    knowledge_repo.count_by_status.return_value = {KnowledgeStatus.LEARNING: 1}
+    item_repo.get_many.return_value = [_item(v1, "一")]
+    category_repo.get_all.return_value = [
+        Category(id=hsk1, name="HSK 1", type=CategoryType.HSK, hsk_level=1),
+    ]
+    assignment_repo.get_by_vocabulary.return_value = [
+        CategoryAssignment(category_id=hsk1, vocabulary_id=v1)
+    ]
+
+    result = await use_case.execute(learner_id, hsk_level=3)
+
+    assert result.total == 0
+    assert result.items == ()
+    # Status counts remain full-profile
+    assert result.status_counts["learning"] == 1
+
+
+@pytest.mark.asyncio
+async def test_hsk_filter_keeps_only_matching_level_among_many(
+    use_case: ListVocabularyDashboard,
+    knowledge_repo: AsyncMock,
+    item_repo: AsyncMock,
+    category_repo: AsyncMock,
+    assignment_repo: AsyncMock,
+    learner_id: LearnerId,
+) -> None:
+    v1, v2, v3 = _vid("v1"), _vid("v2"), _vid("v3")
+    hsk1, hsk2 = CategoryId("hsk-1"), CategoryId("hsk-2")
+    knowledge_repo.get_all_for_learner.return_value = [
+        _knowledge(learner_id, v1),
+        _knowledge(learner_id, v2),
+        _knowledge(learner_id, v3),
+    ]
+    knowledge_repo.count_by_status.return_value = {KnowledgeStatus.LEARNING: 3}
+    item_repo.get_many.return_value = [
+        _item(v1, "一"),
+        _item(v2, "两"),
+        _item(v3, "三"),
+    ]
+    category_repo.get_all.return_value = [
+        Category(id=hsk1, name="HSK 1", type=CategoryType.HSK, hsk_level=1),
+        Category(id=hsk2, name="HSK 2", type=CategoryType.HSK, hsk_level=2),
+    ]
+
+    async def assignments_for(vid: VocabularyId) -> list[CategoryAssignment]:
+        key = str(vid)
+        if key == "v1":
+            return [CategoryAssignment(category_id=hsk1, vocabulary_id=v1)]
+        if key == "v2":
+            return [CategoryAssignment(category_id=hsk2, vocabulary_id=v2)]
+        # v3: topic only, no HSK
+        return []
+
+    assignment_repo.get_by_vocabulary.side_effect = assignments_for
+
+    result = await use_case.execute(learner_id, hsk_level=1)
+
+    assert result.total == 1
+    assert result.items[0].text == "一"
+    assert result.items[0].hsk_level == 1
+
+
+@pytest.mark.asyncio
 async def test_search_filters_text_pinyin_meaning(
     use_case: ListVocabularyDashboard,
     knowledge_repo: AsyncMock,
