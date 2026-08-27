@@ -45,7 +45,8 @@ See `TODO.md` for known bugs and the next polish items.
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query                         |
 | Tooling  | Ruff, Mypy (strict), Pytest, pre-commit, Docker Compose, structlog + OpenTelemetry |
 
-> **Note:** The project currently targets Python 3.14. Ensure your local environment and CI runners match.
+> **Note:** The project targets **Python 3.14+** (stable since October 2025).  
+> A `.python-version` file is provided for pyenv / asdf. Docker images and CI also use 3.14.
 
 ## Quick Start (Recommended: Docker Compose)
 
@@ -149,6 +150,7 @@ make test-integration
 
 | Command                   | Description                                     |
 | ------------------------- | ----------------------------------------------- |
+| `make help`               | List available targets                          |
 | `make db-up`              | Start Postgres, wait for health, run migrations |
 | `make db-down`            | Stop containers and remove volumes              |
 | `make seed-categories`    | Seed default categories (requires DB)           |
@@ -156,6 +158,8 @@ make test-integration
 | `make test-unit`          | Unit tests only                                 |
 | `make test-integration`   | Integration tests only                          |
 | `make test-file FILE=...` | Run a single test file                          |
+| `make lint`               | Ruff check + format check + Mypy                |
+| `make format`             | Auto-fix + format with Ruff                     |
 | `make restart-dev`        | Rebuild and restart the full Docker stack       |
 
 ## Frontend Development

@@ -1,22 +1,50 @@
-.PHONY: test-db-up test-db-down test-db-logs test test-unit test-integration test-file migrate seed-categories db-up db-down
+.PHONY: help test-db-up test-db-down test-db-logs test test-unit test-integration test-file migrate seed-categories db-up db-down restart-dev
 
-# OS-Agnostic Executable Detection
+# ---------------------------------------------------------------------------
+# Tool detection – always prefer the project virtualenv when present
+# ---------------------------------------------------------------------------
 ifeq ($(OS),Windows_NT)
-    PYTHON := backend/.venv/Scripts/python.exe
-    PYTEST := backend/.venv/Scripts/pytest.exe
-    ALEMBIC := backend/.venv/Scripts/alembic.exe
+    VENV_PYTHON := backend\.venv\Scripts\python.exe
+    VENV_PYTEST := backend\.venv\Scripts\pytest.exe
+    VENV_ALEMBIC := backend\.venv\Scripts\alembic.exe
+    VENV_RUFF := backend\.venv\Scripts\ruff.exe
+    VENV_MYPY := backend\.venv\Scripts\mypy.exe
 else
-    PYTHON := $(shell which python3 2>/dev/null || echo backend/.venv/bin/python)
-    PYTEST := $(shell which pytest 2>/dev/null || echo backend/.venv/bin/pytest)
-    ALEMBIC := $(shell which alembic 2>/dev/null || echo backend/.venv/bin/alembic)
+    VENV_PYTHON := backend/.venv/bin/python
+    VENV_PYTEST := backend/.venv/bin/pytest
+    VENV_ALEMBIC := backend/.venv/bin/alembic
+    VENV_MYPY := backend/.venv/bin/mypy
+    VENV_RUFF := backend/.venv/bin/ruff
 endif
+
+# Prefer venv binaries if they exist, otherwise fall back to PATH
+PYTHON  := $(shell test -x "$(VENV_PYTHON)"  && echo "$(VENV_PYTHON)"  || command -v python3 2>/dev/null || echo python3)
+PYTEST  := $(shell test -x "$(VENV_PYTEST)"  && echo "$(VENV_PYTEST)"  || command -v pytest  2>/dev/null || echo pytest)
+ALEMBIC := $(shell test -x "$(VENV_ALEMBIC)" && echo "$(VENV_ALEMBIC)" || command -v alembic 2>/dev/null || echo alembic)
+RUFF    := $(shell test -x "$(VENV_RUFF)"    && echo "$(VENV_RUFF)"    || command -v ruff    2>/dev/null || echo ruff)
+MYPY    := $(shell test -x "$(VENV_MYPY)"    && echo "$(VENV_MYPY)"    || command -v mypy    2>/dev/null || echo mypy)
 
 DOCKER_COMPOSE := docker compose
 
+help:
+	@echo "Available targets:"
+	@echo "  db-up              Start Postgres + run migrations"
+	@echo "  db-down            Stop containers and remove volumes"
+	@echo "  seed-categories    Seed default categories"
+	@echo "  test               Full test suite (ephemeral test DB)"
+	@echo "  test-unit          Unit tests only"
+	@echo "  test-integration   Integration tests only"
+	@echo "  test-file FILE=... Run a single test file"
+	@echo "  lint               Ruff check + format check + Mypy"
+	@echo "  format             Ruff format (in-place)"
+	@echo "  restart-dev        Rebuild and restart full Docker stack"
+
+# ---------------------------------------------------------------------------
+# Database
+# ---------------------------------------------------------------------------
 migrate:
 	$(ALEMBIC) -c backend/alembic.ini upgrade head
 
-# Spin up the primary local development database (docker-compose.yml)
 db-up:
 	$(DOCKER_COMPOSE) up -d --remove-orphans db
 	@echo "Waiting for development Postgres to become healthy..."
@@ -30,15 +58,15 @@ db-up:
 db-down:
 	$(DOCKER_COMPOSE) down -v
 
-# --- Seeding ---
-
-# Ensure dev database is running, then execute seeding script inside virtualenv
-# PYTHONPATH is set so the installed package (or src layout) is importable
+# ---------------------------------------------------------------------------
+# Seeding
+# ---------------------------------------------------------------------------
 seed-categories: db-up
 	cd backend && PYTHONPATH=src $(PYTHON) -m chinese_learning.infrastructure.persistence.seed.seed_categories
 
-# --- Testing ---
-# Start the test Postgres container
+# ---------------------------------------------------------------------------
+# Testing
+# ---------------------------------------------------------------------------
 test-db-up:
 	$(DOCKER_COMPOSE) -f docker-compose.test.yml up -d
 	@echo "Waiting for Postgres to become healthy..."
@@ -47,25 +75,21 @@ test-db-up:
 	done
 	@echo "Postgres is ready on localhost:5433"
 
-# Stop & remove the container + volume
 test-db-down:
 	$(DOCKER_COMPOSE) -f docker-compose.test.yml down -v
 
-# Show logs
 test-db-logs:
 	$(DOCKER_COMPOSE) -f docker-compose.test.yml logs -f postgres-test
 
-# Run unit tests (starts DB if needed)
 test-unit: test-db-up
 	$(PYTEST) backend/tests/unit -v --tb=short
 	$(MAKE) test-db-down
 
-# Run integration tests (starts DB if needed)
 test-integration: test-db-up
 	$(PYTEST) backend/tests/integration -v --tb=short
 	$(MAKE) test-db-down
 
-# Run a single test file (Usage: make test-file FILE=backend/tests/unit/test_cedict.py)
+# Usage: make test-file FILE=backend/tests/unit/test_cedict.py
 test-file: test-db-up
 	@if [ -z "$(FILE)" ]; then \
 		echo "Error: Please specify a file. Example: make test-file FILE=backend/tests/unit/test_cedict.py"; \
@@ -73,12 +97,26 @@ test-file: test-db-up
 	fi
 	$(PYTEST) $(FILE) -v --tb=short
 	$(MAKE) test-db-down
-	
-# Run all tests
+
 test: test-db-up
 	$(PYTEST) backend/tests -v --tb=short
 	$(MAKE) test-db-down
 
-restart-dev: 
+# ---------------------------------------------------------------------------
+# Lint / format
+# ---------------------------------------------------------------------------
+lint:
+	cd backend && $(RUFF) check .
+	cd backend && $(RUFF) format --check .
+	cd backend && $(MYPY) src
+
+format:
+	cd backend && $(RUFF) check . --fix
+	cd backend && $(RUFF) format .
+
+# ---------------------------------------------------------------------------
+# Docker helpers
+# ---------------------------------------------------------------------------
+restart-dev:
 	$(DOCKER_COMPOSE) down
 	$(DOCKER_COMPOSE) up -d --build

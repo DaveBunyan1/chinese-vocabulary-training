@@ -56,7 +56,8 @@ pre-commit install
 ## Project conventions
 
 - **Architecture**: Domain-Driven Design + Hexagonal Architecture. Keep the domain layer pure (no FastAPI, SQLAlchemy, or HTTP imports).
-- **Python**: 3.14+, type hints required, strict Mypy.
+- **Python**: 3.14+ (pinned via `.python-version`), type hints required, strict Mypy.
+  Prefer the project venv at `backend/.venv`. Full tests run in CI / via `make test`; pre-commit only runs fast checks (Ruff + Mypy).
 - **Commits**: Prefer conventional-style messages (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`).
 - **Branches**: Feature work on `feat/...` or `fix/...` branches; open PRs against `main`.
 

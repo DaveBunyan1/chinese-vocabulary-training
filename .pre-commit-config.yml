@@ -1,21 +1,21 @@
+# Fast local hooks only. Full test suite runs in CI / via `make test`.
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.0
+    rev: v0.15.22
     hooks:
       - id: ruff
         args: [--fix]
+        files: ^backend/
       - id: ruff-format
+        files: ^backend/
+
   - repo: local
     hooks:
       - id: mypy
-        name: mypy
-        entry: bash -c "cd backend && mypy src"
+        name: mypy (backend)
+        entry: bash -c 'cd backend && mypy src'
         language: system
         types: [python]
+        files: ^backend/
         pass_filenames: false
-      - id: pytest
-        name: pytest
-        entry: bash -c "cd backend && pytest"
-        language: system
-        types: [python]
-        pass_filenames: false
+        # Requires the project venv (with mypy) to be active, or mypy on PATH
