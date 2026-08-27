@@ -184,3 +184,66 @@ async def test_vocabulary_exists(
 
     assert await repo.exists(learner_id, knowledge.vocabulary_id) is True
     assert await repo.exists(learner_id, VocabularyId(str(uuid4()))) is False
+
+
+@pytest.mark.asyncio
+async def test_vocabulary_get_all_for_learner(
+    db_session: AsyncSession,
+    learner_id: LearnerId,
+    other_learner_id: LearnerId,
+    make_vocabulary_knowledge: Callable[..., VocabularyKnowledge],
+):
+    repo = VocabularyKnowledgeRepository(db_session)
+    await repo.save_many(
+        [
+            make_vocabulary_knowledge(
+                learner_id=learner_id,
+                vocabulary_id=VocabularyId("v-a"),
+                status=KnowledgeStatus.NEW,
+            ),
+            make_vocabulary_knowledge(
+                learner_id=learner_id,
+                vocabulary_id=VocabularyId("v-b"),
+                status=KnowledgeStatus.KNOWN,
+            ),
+            make_vocabulary_knowledge(
+                learner_id=other_learner_id,
+                vocabulary_id=VocabularyId("v-c"),
+                status=KnowledgeStatus.LEARNING,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    results = await repo.get_all_for_learner(learner_id)
+    ids = {str(k.vocabulary_id) for k in results}
+    assert ids == {"v-a", "v-b"}
+
+
+@pytest.mark.asyncio
+async def test_vocabulary_get_by_status(
+    db_session: AsyncSession,
+    learner_id: LearnerId,
+    make_vocabulary_knowledge: Callable[..., VocabularyKnowledge],
+):
+    repo = VocabularyKnowledgeRepository(db_session)
+    await repo.save_many(
+        [
+            make_vocabulary_knowledge(
+                learner_id=learner_id,
+                vocabulary_id=VocabularyId("v-new"),
+                status=KnowledgeStatus.NEW,
+            ),
+            make_vocabulary_knowledge(
+                learner_id=learner_id,
+                vocabulary_id=VocabularyId("v-known"),
+                status=KnowledgeStatus.KNOWN,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    new_only = await repo.get_by_status(learner_id, KnowledgeStatus.NEW)
+    assert len(new_only) == 1
+    assert new_only[0].status is KnowledgeStatus.NEW
+    assert str(new_only[0].vocabulary_id) == "v-new"

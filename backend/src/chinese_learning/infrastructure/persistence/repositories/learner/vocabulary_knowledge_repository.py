@@ -116,7 +116,7 @@ class VocabularyKnowledgeRepository:
         return [vocabulary_knowledge_to_domain(m) for m in result.scalars().all()]
 
     async def get_by_status(
-        self, learner_id: LearnerId, status: str
+        self, learner_id: LearnerId, status: KnowledgeStatus
     ) -> list[VocabularyKnowledge]:
         record_repo_metric("get_by_status", entity="vocabulary_knowledge")
         stmt = select(VocabularyKnowledgeModel).where(
