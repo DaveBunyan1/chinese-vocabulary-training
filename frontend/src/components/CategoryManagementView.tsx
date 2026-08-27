@@ -38,6 +38,9 @@ export const CategoryManagementView: React.FC = () => {
   // Assign search
   const [assignSearch, setAssignSearch] = useState("");
 
+  const queryClient = useQueryClient();
+  const [mutationError, setMutationError] = useState<string | null>(null);
+
   const {
     data: categoriesData,
     isFetching: loading,
@@ -47,7 +50,29 @@ export const CategoryManagementView: React.FC = () => {
     queryKey: ["categories"],
     queryFn: fetchCategories,
   });
-  const categories = categoriesData?.categories ?? [];
+  const categories = useMemo(
+    () => categoriesData?.categories ?? [],
+    [categoriesData],
+  );
+
+  const { data: allVocabData } = useQuery({
+    queryKey: ["vocabulary-dashboard", "all-for-categories"],
+    queryFn: () => fetchVocabularyDashboard({}),
+  });
+  const allVocab = useMemo(() => allVocabData?.items ?? [], [allVocabData]);
+
+  const { data: assignedData } = useQuery({
+    queryKey: ["category-vocabulary", selectedId],
+    queryFn: () => fetchCategoryVocabulary(selectedId!),
+    enabled: Boolean(selectedId),
+  });
+  const assigned = useMemo(
+    () => (selectedId ? (assignedData?.items ?? []) : []),
+    [selectedId, assignedData],
+  );
+
+  const error =
+    mutationError ?? (categoriesError ? errorDetail(categoriesError) : null);
 
   const selected = useMemo(
     () => categories.find((c) => c.id === selectedId) ?? null,
@@ -58,25 +83,6 @@ export const CategoryManagementView: React.FC = () => {
     () => categories.filter((c) => c.type === "custom" || c.type === "topic"),
     [categories],
   );
-
-  const queryClient = useQueryClient();
-  const [mutationError, setMutationError] = useState<string | null>(null);
-
-  const { data: allVocabData } = useQuery({
-    queryKey: ["vocabulary-dashboard", "all-for-categories"],
-    queryFn: () => fetchVocabularyDashboard({}),
-  });
-  const allVocab = allVocabData?.items ?? [];
-
-  const { data: assignedData } = useQuery({
-    queryKey: ["category-vocabulary", selectedId],
-    queryFn: () => fetchCategoryVocabulary(selectedId!),
-    enabled: Boolean(selectedId),
-  });
-  const assigned = selectedId ? (assignedData?.items ?? []) : [];
-
-  const error =
-    mutationError ?? (categoriesError ? errorDetail(categoriesError) : null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
