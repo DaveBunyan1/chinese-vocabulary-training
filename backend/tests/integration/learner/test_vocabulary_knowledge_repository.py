@@ -243,7 +243,7 @@ async def test_vocabulary_get_by_status(
     )
     await db_session.commit()
 
-    new_only = await repo.get_by_status(learner_id, KnowledgeStatus.NEW.value)
+    new_only = await repo.get_by_status(learner_id, KnowledgeStatus.NEW)
     assert len(new_only) == 1
     assert new_only[0].status is KnowledgeStatus.NEW
     assert str(new_only[0].vocabulary_id) == "v-new"
