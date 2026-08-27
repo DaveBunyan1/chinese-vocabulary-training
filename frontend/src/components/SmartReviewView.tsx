@@ -19,10 +19,7 @@ import type {
   Question,
   SubmitAnswerResponse,
 } from "../types/practice";
-import type {
-  ReviewQueueItem,
-  ReviewQueueResponse,
-} from "../types/reviewQueue";
+import type { ReviewQueueItem } from "../types/reviewQueue";
 
 type Phase = "queue" | "active" | "summary";
 
