@@ -139,8 +139,9 @@ async def test_filters_by_knowledge_status(
     knowledge_repo: AsyncMock,
     learner_id: LearnerId,
 ) -> None:
-    knowledge_repo.get_by_status.return_value = [
+    knowledge_repo.get_all_for_learner.return_value = [
         _knowledge(learner_id, "学", KnowledgeStatus.NEW),
+        _knowledge(learner_id, "习", KnowledgeStatus.LEARNING),
     ]
 
     result = await use_case.execute(
@@ -153,11 +154,8 @@ async def test_filters_by_knowledge_status(
     assert result.exercise.question_count == 1
     assert result.exercise.knowledge_status_filter is KnowledgeStatus.NEW
     assert result.candidate_count == 1
-    # Character repo takes the enum, not .value
-    knowledge_repo.get_by_status.assert_awaited_once_with(
-        learner_id, KnowledgeStatus.NEW
-    )
-    knowledge_repo.get_all_for_learner.assert_not_awaited()
+    knowledge_repo.get_all_for_learner.assert_awaited_once_with(learner_id)
+    knowledge_repo.get_by_status.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------

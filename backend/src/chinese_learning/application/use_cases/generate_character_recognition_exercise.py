@@ -8,26 +8,21 @@ Note: Category filtering is not supported for characters yet — CategoryAssignm
 links only to VocabularyItem. Status filtering is supported.
 """
 
-from __future__ import annotations
-
 import random
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import uuid4
 
+from chinese_learning.application.services.weighted_item_selection import (
+    compute_weight,
+    select_weighted,
+)
 from chinese_learning.domain.identity.learner import LearnerId
+from chinese_learning.domain.learner.character_knowledge import CharacterKnowledge
 from chinese_learning.domain.learner.knowledge_status import KnowledgeStatus
-from chinese_learning.domain.practice.exercise import (
-    Exercise,
-    ExerciseId,
-    ExerciseType,
-)
-from chinese_learning.domain.practice.question import (
-    Question,
-    QuestionId,
-    QuestionType,
-)
+from chinese_learning.domain.practice.exercise import Exercise, ExerciseId, ExerciseType
+from chinese_learning.domain.practice.question import Question, QuestionId, QuestionType
 from chinese_learning.domain.text_analysis.character import Character
 from chinese_learning.infrastructure.nlp.cedict_dictionary import CedictDictionary
 from chinese_learning.infrastructure.persistence.repositories.learner.character_knowledge_repository import (
@@ -36,12 +31,10 @@ from chinese_learning.infrastructure.persistence.repositories.learner.character_
 
 
 class RecognitionDirection(StrEnum):
-    """Which side of the card is shown as the prompt."""
-
-    CHARACTER_TO_MEANING = "character_to_meaning"  # prompt = 学, answer = study
-    CHARACTER_TO_PINYIN = "character_to_pinyin"  # prompt = 学, answer = xué
-    MEANING_TO_CHARACTER = "meaning_to_character"  # prompt = study, answer = 学
-    PINYIN_TO_CHARACTER = "pinyin_to_character"  # prompt = xué, answer = 学
+    CHARACTER_TO_MEANING = "character_to_meaning"
+    CHARACTER_TO_PINYIN = "character_to_pinyin"
+    MEANING_TO_CHARACTER = "meaning_to_character"
+    PINYIN_TO_CHARACTER = "pinyin_to_character"
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,9 +45,8 @@ class GenerateCharacterRecognitionExerciseResult:
 
 class GenerateCharacterRecognitionExercise:
     """
-    Selects characters the learner knows (optionally by status), enriches
-    them via CEDICT for meaning/pinyin, builds recognition questions, and
-    returns a PENDING Exercise.
+    Selects characters with weighted sampling, enriches via CEDICT,
+    builds recognition questions, and returns a PENDING Exercise.
     """
 
     def __init__(
@@ -81,7 +73,7 @@ class GenerateCharacterRecognitionExercise:
         now = created_at or datetime.now(UTC)
         sampler = rng or random.Random()
 
-        candidates = await self._candidate_characters(
+        candidates = await self._candidate_knowledge(
             learner_id=learner_id,
             knowledge_status=knowledge_status,
         )
@@ -89,12 +81,22 @@ class GenerateCharacterRecognitionExercise:
         if not candidates:
             raise ValueError("No characters match the given filters for this learner")
 
-        sample_size = min(count, len(candidates))
-        selected = sampler.sample(candidates, sample_size)
+        selected_knowledge = select_weighted(
+            candidates,
+            weight_fn=lambda k: compute_weight(
+                status=k.status,
+                failed_attempts=k.failed_recognitions,
+                last_practised_at=k.last_practised_at,
+                next_review_at=k.next_review_at,
+                as_of=now,
+            ),
+            k=min(count, len(candidates)),
+            rng=sampler,
+        )
 
         questions = tuple(
-            self._build_question(char, order=i, direction=direction)
-            for i, char in enumerate(selected)
+            self._build_question(k.character, order=i, direction=direction)
+            for i, k in enumerate(selected_knowledge)
         )
 
         exercise = Exercise.create(
@@ -103,7 +105,7 @@ class GenerateCharacterRecognitionExercise:
             type=ExerciseType.CHARACTER_RECOGNITION,
             questions=questions,
             created_at=now,
-            category_id=None,  # characters are not category-linked yet
+            category_id=None,
             knowledge_status_filter=knowledge_status,
         )
 
@@ -112,21 +114,16 @@ class GenerateCharacterRecognitionExercise:
             candidate_count=len(candidates),
         )
 
-    async def _candidate_characters(
+    async def _candidate_knowledge(
         self,
         *,
         learner_id: LearnerId,
         knowledge_status: KnowledgeStatus | None,
-    ) -> list[Character]:
+    ) -> list[CharacterKnowledge]:
+        knowledge_list = await self._knowledge_repo.get_all_for_learner(learner_id)
         if knowledge_status is not None:
-            # CharacterKnowledgeRepository takes the enum directly (not .value)
-            knowledge_list = await self._knowledge_repo.get_by_status(
-                learner_id, knowledge_status
-            )
-        else:
-            knowledge_list = await self._knowledge_repo.get_all_for_learner(learner_id)
-
-        return [k.character for k in knowledge_list]
+            knowledge_list = [k for k in knowledge_list if k.status is knowledge_status]
+        return knowledge_list
 
     def _build_question(
         self,
@@ -135,7 +132,6 @@ class GenerateCharacterRecognitionExercise:
         order: int,
         direction: RecognitionDirection,
     ) -> Question:
-        # Enrich from CEDICT (falls back to pypinyin / "—" when missing)
         entry = self._dictionary.lookup(character.symbol)
 
         if direction is RecognitionDirection.CHARACTER_TO_MEANING:

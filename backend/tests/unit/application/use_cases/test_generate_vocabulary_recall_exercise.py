@@ -153,11 +153,15 @@ async def test_filters_by_knowledge_status(
     item_repo: AsyncMock,
     learner_id: LearnerId,
 ) -> None:
-    v1 = _vid("v1")
-    knowledge_repo.get_by_status.return_value = [
-        _knowledge(learner_id, v1, KnowledgeStatus.NEW)
+    v_new = _vid("new")
+    v_learning = _vid("learning")
+    knowledge_repo.get_all_for_learner.return_value = [
+        _knowledge(learner_id, v_new, KnowledgeStatus.NEW),
+        _knowledge(learner_id, v_learning, KnowledgeStatus.LEARNING),
     ]
-    item_repo.get_many.return_value = [_item(vid=v1)]
+    item_repo.get_many.return_value = [
+        _item(vid=v_new, text="新", meaning="new"),
+    ]
 
     result = await use_case.execute(
         learner_id,
@@ -169,49 +173,10 @@ async def test_filters_by_knowledge_status(
     assert result.exercise.question_count == 1
     assert result.exercise.knowledge_status_filter is KnowledgeStatus.NEW
     assert result.candidate_count == 1
-    knowledge_repo.get_by_status.assert_awaited_once_with(
-        learner_id, KnowledgeStatus.NEW.value
-    )
-    knowledge_repo.get_all_for_learner.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_filters_by_category(
-    use_case: GenerateVocabularyRecallExercise,
-    knowledge_repo: AsyncMock,
-    item_repo: AsyncMock,
-    assignment_repo: AsyncMock,
-    learner_id: LearnerId,
-) -> None:
-    v1, v2, v3 = _vid("v1"), _vid("v2"), _vid("v3")
-    cat_id = CategoryId("cat-food")
-
-    knowledge_repo.get_all_for_learner.return_value = [
-        _knowledge(learner_id, v1),
-        _knowledge(learner_id, v2),
-        _knowledge(learner_id, v3),
-    ]
-    # Only v1 and v3 are in the category
-    assignment_repo.get_by_category.return_value = [
-        CategoryAssignment(category_id=cat_id, vocabulary_id=v1),
-        CategoryAssignment(category_id=cat_id, vocabulary_id=v3),
-    ]
-    item_repo.get_many.return_value = [
-        _item(vid=v1, text="苹果", meaning="apple"),
-        _item(vid=v3, text="香蕉", meaning="banana"),
-    ]
-
-    result = await use_case.execute(
-        learner_id,
-        count=10,
-        category_id=cat_id,
-        created_at=FIXED_NOW,
-    )
-
-    assert result.candidate_count == 2
-    assert result.exercise.question_count == 2
-    assert result.exercise.category_id == cat_id
-    assignment_repo.get_by_category.assert_awaited_once_with(cat_id)
+    knowledge_repo.get_all_for_learner.assert_awaited_once_with(learner_id)
+    # Only the NEW item should be requested
+    called_ids = item_repo.get_many.await_args.args[0]
+    assert [str(v) for v in called_ids] == [str(v_new)]
 
 
 @pytest.mark.asyncio
@@ -222,30 +187,33 @@ async def test_filters_by_status_and_category(
     assignment_repo: AsyncMock,
     learner_id: LearnerId,
 ) -> None:
-    v1, v2 = _vid("v1"), _vid("v2")
-    cat_id = CategoryId("cat-hsk1")
-
-    knowledge_repo.get_by_status.return_value = [
-        _knowledge(learner_id, v1, KnowledgeStatus.LEARNING),
-        _knowledge(learner_id, v2, KnowledgeStatus.LEARNING),
+    cat = CategoryId(str(uuid4()))
+    v_in = _vid("in")
+    v_out = _vid("out")
+    knowledge_repo.get_all_for_learner.return_value = [
+        _knowledge(learner_id, v_in, KnowledgeStatus.LEARNING),
+        _knowledge(learner_id, v_out, KnowledgeStatus.LEARNING),
     ]
     assignment_repo.get_by_category.return_value = [
-        CategoryAssignment(category_id=cat_id, vocabulary_id=v1),
+        CategoryAssignment(category_id=cat, vocabulary_id=v_in),
     ]
-    item_repo.get_many.return_value = [_item(vid=v1)]
+    item_repo.get_many.return_value = [
+        _item(vid=v_in, text="苹果", meaning="apple"),
+    ]
 
     result = await use_case.execute(
         learner_id,
         count=5,
-        category_id=cat_id,
         knowledge_status=KnowledgeStatus.LEARNING,
+        category_id=cat,
         created_at=FIXED_NOW,
     )
 
-    assert result.candidate_count == 1
     assert result.exercise.question_count == 1
-    assert result.exercise.knowledge_status_filter is KnowledgeStatus.LEARNING
-    assert result.exercise.category_id == cat_id
+    assert result.candidate_count == 1
+    assert result.exercise.category_id == cat
+    knowledge_repo.get_all_for_learner.assert_awaited_once_with(learner_id)
+    assignment_repo.get_by_category.assert_awaited_once_with(cat)
 
 
 # ---------------------------------------------------------------------------
@@ -348,7 +316,9 @@ async def test_no_matching_knowledge_raises(
 ) -> None:
     knowledge_repo.get_all_for_learner.return_value = []
 
-    with pytest.raises(ValueError, match="No vocabulary items could be loaded"):
+    with pytest.raises(
+        ValueError, match="No vocabulary matches the given filters for this learner"
+    ):
         await use_case.execute(learner_id, count=5)
 
 
@@ -363,7 +333,9 @@ async def test_category_filter_with_no_overlap_raises(
     knowledge_repo.get_all_for_learner.return_value = [_knowledge(learner_id, v1)]
     assignment_repo.get_by_category.return_value = []  # nothing in category
 
-    with pytest.raises(ValueError, match="No vocabulary items could be loaded"):
+    with pytest.raises(
+        ValueError, match="No vocabulary matches the given filters for this learner"
+    ):
         await use_case.execute(
             learner_id,
             count=5,

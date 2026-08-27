@@ -35,3 +35,9 @@
 ## Testing & Refactoring
 
 - [ ] **Dashboard Persistence Tests:** Write comprehensive integration/unit tests for dashboard query methods across persistence repositories.
+
+---
+
+### Documentation
+
+- [ ] **README.md**: Update README.md to align with MVP (after finishing phase 7) and add screenshots etc. where applicable
