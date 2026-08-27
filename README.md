@@ -19,6 +19,7 @@ Key design documents:
 | [Product Vision](docs/product_vision.md) | Goals, learning activities, MVP scope              |
 | [Domain Model](docs/domain_model.md)     | Core entities, aggregates, and ubiquitous language |
 | [Architecture](docs/architecture.md)     | Layers, ports, and component boundaries            |
+| [Development Guide](docs/DEVELOPMENT.md) | Local setup, workflow, testing, and conventions    |
 | [Roadmap](docs/ROADMAP.md)               | Phased delivery plan                               |
 | [Context Map](docs/context_map.md)       | Bounded contexts                                   |
 
@@ -73,6 +74,8 @@ docker compose down -v
 ```
 
 ## Local Development (Backend only)
+
+> 💡 **Detailed Guide:** For a deep dive into environment configuration, database management, and testing strategies, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ### Prerequisites
 
