@@ -10,6 +10,9 @@ from chinese_learning.domain.vocabulary.vocabulary_item import (
     VocabularyId,
     VocabularyItem,
 )
+from chinese_learning.infrastructure.nlp.definition_sanitize import (
+    sanitize_definition,
+)
 
 _LINE_RE = re.compile(
     r"^(?P<traditional>\S+)\s+(?P<simplified>\S+)\s+\[(?P<pinyin>[^\]]+)\]\s+/(?P<meaning>.+)/$"
@@ -52,7 +55,7 @@ class CedictDictionary:
 
                 simplified = match.group("simplified")
                 pinyin = match.group("pinyin")
-                meaning = match.group("meaning").replace("/", "; ").strip("; ")
+                meaning = sanitize_definition(match.group("meaning"))
 
                 self._entries.setdefault(simplified, []).append((pinyin, meaning))
 
