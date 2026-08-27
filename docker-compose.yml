@@ -1,3 +1,10 @@
+# Local full-stack development.
+# Usage: docker compose up --build
+#
+# Frontend:  http://localhost:3000  (nginx; proxies /api → backend)
+# Backend:   http://localhost:8000  (FastAPI + reload)
+# Postgres:  localhost:5432
+
 services:
   db:
     image: postgres:16-alpine
@@ -26,16 +33,21 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - ENVIRONMENT=development
-      - PORT=8000
-      - LOG_LEVEL=DEBUG
-      - DATABASE_URL=postgresql+asyncpg://chinese:chinese@db:5432/chinese_learning
+      ENVIRONMENT: development
+      PORT: "8000"
+      LOG_LEVEL: DEBUG
+      DATABASE_URL: postgresql+asyncpg://chinese:chinese@db:5432/chinese_learning
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      - ./backend/src:/app/src # Live reload code during development
-    command: uvicorn chinese_learning.app:app --host 0.0.0.0 --port 8000 --reload
+      # Live-reload application code during development
+      - ./backend/src:/app/src
+    command: >
+      uvicorn chinese_learning.app:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
 
   frontend:
     build:

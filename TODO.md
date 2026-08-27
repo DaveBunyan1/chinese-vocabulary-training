@@ -3,7 +3,7 @@
 ## Bug Fixes
 
 - [ ] **HSK Level Filtering:** Fix `ListVocabularyDashboard` so filtering by HSK level correctly updates and narrows the returned item count.
-- [ ] **Dashboard Unit Tests:** Fix broken `test_filters_by_status` assertion failure in `test_list_vocabulary_dashboard.py` caused by repository mock mismatches.
+- [x] **Dashboard Unit Tests:** Fix broken `test_filters_by_status` assertion failure in `test_list_vocabulary_dashboard.py` caused by repository mock mismatches.
 - [ ] **Definition Sanitization:** Run a cleaning script over vocabulary dictionary definitions to strip out parenthetical glosses, usage notes, and bound-form entries (e.g. reduce `他` from full dictionary note down to `he; him; his`).
 - [ ] **Flexible Definition Matching:** Update practice answer validation to parse multi-meaning target strings into single accepted terms so answers like `"I"` pass for `"I; me; my"`.
 

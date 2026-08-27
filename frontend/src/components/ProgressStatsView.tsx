@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { BarChart3, RefreshCw } from "lucide-react";
 
 import { fetchProgressStats } from "../api/progress";
-import type { ProgressStatsResponse, StatusBreakdown } from "../types/progress";
+import type { StatusBreakdown } from "../types/progress";
 
 function errorDetail(err: unknown): string {
   const anyErr = err as { response?: { data?: { detail?: string } } };
@@ -10,26 +11,17 @@ function errorDetail(err: unknown): string {
 }
 
 export const ProgressStatsView: React.FC = () => {
-  const [data, setData] = useState<ProgressStatsResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data = null,
+    isFetching: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["progress-stats"],
+    queryFn: fetchProgressStats,
+  });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setData(await fetchProgressStats());
-    } catch (err) {
-      setError(errorDetail(err));
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const error = queryError ? errorDetail(queryError) : null;
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -45,7 +37,7 @@ export const ProgressStatsView: React.FC = () => {
         </div>
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={() => void refetch()}
           disabled={loading}
           className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1"
         >

@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from importlib.metadata import PackageNotFoundError, version
 
 import structlog
 from fastapi import FastAPI
@@ -20,26 +21,51 @@ from chinese_learning.presentation.rest.routers import (
 logger = structlog.get_logger()
 
 
+def _get_version() -> str:
+    try:
+        return version("chinese-learning")
+    except PackageNotFoundError:
+        return "0.1.0"
+
+
+APP_VERSION = _get_version()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     setup_logging()
-    logger.info("Application starting", environment=settings.ENVIRONMENT)
+    logger.info(
+        "Application starting",
+        environment=settings.ENVIRONMENT,
+        version=APP_VERSION,
+    )
     yield
     logger.info("Application shutting down")
 
 
 app = FastAPI(
     title="Chinese Learning Platform API",
-    version="0.1.0",
+    description=(
+        "Domain-driven API for Chinese vocabulary training: "
+        "text import, knowledge tracking, practice, and dashboards."
+    ),
+    version=APP_VERSION,
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
+
+# Local Vite (port 3000 per vite.config) and common alternates
+_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Local Vite dev server
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,7 +74,12 @@ app.add_middleware(
 
 @app.get("/health", tags=["Infrastructure"])
 async def health_check() -> dict[str, str]:
-    return {"status": "ok", "environment": settings.ENVIRONMENT}
+    """Liveness probe used by local checks and container orchestration."""
+    return {
+        "status": "ok",
+        "environment": settings.ENVIRONMENT,
+        "version": APP_VERSION,
+    }
 
 
 app.include_router(text_import.router, prefix="/api/v1")
