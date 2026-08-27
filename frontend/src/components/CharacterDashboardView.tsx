@@ -1,11 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Languages, RefreshCw, Search } from "lucide-react";
 
 import { fetchCharacterDashboard } from "../api/characterDashboard";
-import type {
-  CharacterDashboardItem,
-  CharacterDashboardResponse,
-} from "../types/characterDashboard";
+import type { CharacterDashboardItem } from "../types/characterDashboard";
 
 const STATUS_STYLES: Record<string, string> = {
   new: "bg-slate-100 text-slate-700 border-slate-200",
@@ -23,30 +21,21 @@ export const CharacterDashboardView: React.FC = () => {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
 
-  const [data, setData] = useState<CharacterDashboardResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchCharacterDashboard({
+  const {
+    data = null,
+    isFetching: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["character-dashboard", status, search],
+    queryFn: () =>
+      fetchCharacterDashboard({
         status: status || null,
         search: search || null,
-      });
-      setData(result);
-    } catch (err) {
-      setError(errorDetail(err));
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [status, search]);
+      }),
+  });
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const error = queryError ? errorDetail(queryError) : null;
 
   const onSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,7 +123,7 @@ export const CharacterDashboardView: React.FC = () => {
         </span>
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={() => void refetch()}
           disabled={loading}
           className="flex items-center gap-1 hover:text-slate-700 disabled:opacity-50"
         >

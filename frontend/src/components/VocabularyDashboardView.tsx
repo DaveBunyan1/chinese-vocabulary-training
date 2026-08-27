@@ -1,15 +1,12 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { LayoutList, RefreshCw, Search } from "lucide-react";
 
 import {
   fetchCategories,
   fetchVocabularyDashboard,
 } from "../api/vocabularyDashboard";
-import type {
-  CategoryListItem,
-  VocabularyDashboardItem,
-  VocabularyDashboardResponse,
-} from "../types/vocabularyDashboard";
+import type { VocabularyDashboardItem } from "../types/vocabularyDashboard";
 
 const STATUS_STYLES: Record<string, string> = {
   new: "bg-slate-100 text-slate-700 border-slate-200",
@@ -29,41 +26,29 @@ export const VocabularyDashboardView: React.FC = () => {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
 
-  const [categories, setCategories] = useState<CategoryListItem[]>([]);
-  const [data, setData] = useState<VocabularyDashboardResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories"],
+    queryFn: fetchCategories,
+  });
+  const categories = categoriesData?.categories ?? [];
 
-  useEffect(() => {
-    fetchCategories()
-      .then((res) => setCategories(res.categories))
-      .catch(() => {
-        /* non-fatal for filters */
-      });
-  }, []);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchVocabularyDashboard({
+  const {
+    data = null,
+    isFetching: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["vocabulary-dashboard", status, categoryId, hskLevel, search],
+    queryFn: () =>
+      fetchVocabularyDashboard({
         status: status || null,
         category_id: categoryId || null,
         hsk_level: hskLevel ? Number(hskLevel) : null,
         search: search || null,
-      });
-      setData(result);
-    } catch (err) {
-      setError(errorDetail(err));
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [status, categoryId, hskLevel, search]);
+      }),
+  });
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const error = queryError ? errorDetail(queryError) : null;
 
   const onSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,7 +186,7 @@ export const VocabularyDashboardView: React.FC = () => {
         </span>
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={() => void refetch()}
           disabled={loading}
           className="flex items-center gap-1 hover:text-slate-700 disabled:opacity-50"
         >

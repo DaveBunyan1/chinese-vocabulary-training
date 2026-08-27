@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FolderTree,
   Plus,
@@ -15,8 +16,7 @@ import {
   unassignCategory,
 } from "../api/categories";
 import { fetchVocabularyDashboard } from "../api/vocabularyDashboard";
-import type { Category, CategoryVocabularyItem } from "../types/categories";
-import type { VocabularyDashboardItem } from "../types/vocabularyDashboard";
+import type { Category } from "../types/categories";
 
 function errorDetail(err: unknown): string {
   const anyErr = err as { response?: { data?: { detail?: string } } };
@@ -26,14 +26,9 @@ function errorDetail(err: unknown): string {
 }
 
 export const CategoryManagementView: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [assigned, setAssigned] = useState<CategoryVocabularyItem[]>([]);
-  const [allVocab, setAllVocab] = useState<VocabularyDashboardItem[]>([]);
 
-  const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Create form
   const [newName, setNewName] = useState("");
@@ -42,6 +37,17 @@ export const CategoryManagementView: React.FC = () => {
 
   // Assign search
   const [assignSearch, setAssignSearch] = useState("");
+
+  const {
+    data: categoriesData,
+    isFetching: loading,
+    error: categoriesError,
+    refetch: refetchCategories,
+  } = useQuery({
+    queryKey: ["categories"],
+    queryFn: fetchCategories,
+  });
+  const categories = categoriesData?.categories ?? [];
 
   const selected = useMemo(
     () => categories.find((c) => c.id === selectedId) ?? null,
@@ -53,56 +59,30 @@ export const CategoryManagementView: React.FC = () => {
     [categories],
   );
 
-  const loadCategories = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetchCategories();
-      setCategories(res.categories);
-    } catch (err) {
-      setError(errorDetail(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const queryClient = useQueryClient();
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const loadAssigned = useCallback(async (categoryId: string) => {
-    try {
-      const res = await fetchCategoryVocabulary(categoryId);
-      setAssigned(res.items);
-    } catch (err) {
-      setError(errorDetail(err));
-      setAssigned([]);
-    }
-  }, []);
+  const { data: allVocabData } = useQuery({
+    queryKey: ["vocabulary-dashboard", "all-for-categories"],
+    queryFn: () => fetchVocabularyDashboard({}),
+  });
+  const allVocab = allVocabData?.items ?? [];
 
-  const loadAllVocab = useCallback(async () => {
-    try {
-      const res = await fetchVocabularyDashboard({});
-      setAllVocab(res.items);
-    } catch {
-      /* non-fatal */
-    }
-  }, []);
+  const { data: assignedData } = useQuery({
+    queryKey: ["category-vocabulary", selectedId],
+    queryFn: () => fetchCategoryVocabulary(selectedId!),
+    enabled: Boolean(selectedId),
+  });
+  const assigned = selectedId ? (assignedData?.items ?? []) : [];
 
-  useEffect(() => {
-    void loadCategories();
-    void loadAllVocab();
-  }, [loadCategories, loadAllVocab]);
-
-  useEffect(() => {
-    if (selectedId) {
-      void loadAssigned(selectedId);
-    } else {
-      setAssigned([]);
-    }
-  }, [selectedId, loadAssigned]);
+  const error =
+    mutationError ?? (categoriesError ? errorDetail(categoriesError) : null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
     setBusy(true);
-    setError(null);
+    setMutationError(null);
     try {
       const res = await createCategory({
         name: newName.trim(),
@@ -111,10 +91,10 @@ export const CategoryManagementView: React.FC = () => {
       });
       setNewName("");
       setNewParentId("");
-      await loadCategories();
+      await refetchCategories();
       setSelectedId(res.category.id);
     } catch (err) {
-      setError(errorDetail(err));
+      setMutationError(errorDetail(err));
     } finally {
       setBusy(false);
     }
@@ -123,15 +103,17 @@ export const CategoryManagementView: React.FC = () => {
   const handleAssign = async (vocabularyId: string) => {
     if (!selectedId) return;
     setBusy(true);
-    setError(null);
+    setMutationError(null);
     try {
       await assignCategory({
         vocabulary_id: vocabularyId,
         category_id: selectedId,
       });
-      await loadAssigned(selectedId);
+      await queryClient.invalidateQueries({
+        queryKey: ["category-vocabulary", selectedId],
+      });
     } catch (err) {
-      setError(errorDetail(err));
+      setMutationError(errorDetail(err));
     } finally {
       setBusy(false);
     }
@@ -140,12 +122,14 @@ export const CategoryManagementView: React.FC = () => {
   const handleUnassign = async (vocabularyId: string) => {
     if (!selectedId) return;
     setBusy(true);
-    setError(null);
+    setMutationError(null);
     try {
       await unassignCategory(vocabularyId, selectedId);
-      await loadAssigned(selectedId);
+      await queryClient.invalidateQueries({
+        queryKey: ["category-vocabulary", selectedId],
+      });
     } catch (err) {
-      setError(errorDetail(err));
+      setMutationError(errorDetail(err));
     } finally {
       setBusy(false);
     }
@@ -191,7 +175,7 @@ export const CategoryManagementView: React.FC = () => {
         </div>
         <button
           type="button"
-          onClick={() => void loadCategories()}
+          onClick={() => void refetchCategories()}
           disabled={loading}
           className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1"
         >

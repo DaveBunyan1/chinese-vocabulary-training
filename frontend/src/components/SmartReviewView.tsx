@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle,
   ChevronRight,
@@ -38,7 +39,6 @@ function errorDetail(err: unknown): string {
 }
 
 export const SmartReviewView: React.FC = () => {
-  const [queue, setQueue] = useState<ReviewQueueResponse | null>(null);
   const [includeUnscheduled, setIncludeUnscheduled] = useState(true);
   const [includeVocab, setIncludeVocab] = useState(true);
   const [includeChars, setIncludeChars] = useState(true);
@@ -60,28 +60,21 @@ export const SmartReviewView: React.FC = () => {
     return exercise.questions[index] ?? null;
   }, [exercise, index]);
 
-  const loadQueue = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchReviewQueue({
+  const {
+    data: queue = null,
+    isFetching: queueLoading,
+    error: queueError,
+    refetch: loadQueue,
+  } = useQuery({
+    queryKey: ["review-queue", includeVocab, includeChars, includeUnscheduled],
+    queryFn: () =>
+      fetchReviewQueue({
         limit: 50,
         include_vocabulary: includeVocab,
         include_characters: includeChars,
         include_unscheduled: includeUnscheduled,
-      });
-      setQueue(data);
-    } catch (err) {
-      setError(errorDetail(err));
-      setQueue(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [includeVocab, includeChars, includeUnscheduled]);
-
-  useEffect(() => {
-    void loadQueue();
-  }, [loadQueue]);
+      }),
+  });
 
   const startVocabularyReview = async () => {
     if (!queue) return;
@@ -210,9 +203,9 @@ export const SmartReviewView: React.FC = () => {
         </p>
       </header>
 
-      {error && (
+      {(error || queueError) && (
         <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-          {error}
+          {error ?? errorDetail(queueError)}
         </div>
       )}
 
@@ -246,11 +239,11 @@ export const SmartReviewView: React.FC = () => {
             <button
               type="button"
               onClick={() => void loadQueue()}
-              disabled={loading}
+              disabled={loading || queueLoading}
               className="ml-auto flex items-center gap-1 text-slate-500 hover:text-slate-700"
             >
               <RefreshCw
-                className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`}
+                className={`w-3.5 h-3.5 ${loading || queueLoading ? "animate-spin" : ""}`}
               />
               Refresh
             </button>
@@ -300,7 +293,7 @@ export const SmartReviewView: React.FC = () => {
             </button>
           </div>
 
-          {!loading && queue && queue.items.length === 0 && (
+          {!loading && !queueLoading && queue && queue.items.length === 0 && (
             <div className="text-center py-12 text-slate-500 text-sm border border-dashed border-slate-300 rounded-xl">
               Nothing in the review queue right now.
               <br />
