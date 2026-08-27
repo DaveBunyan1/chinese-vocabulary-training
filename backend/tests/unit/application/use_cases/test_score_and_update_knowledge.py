@@ -428,3 +428,99 @@ async def test_response_time_is_recorded(
 
     assert result.attempt.response_time_ms == 1500
     assert result.attempt.answered_at == FIXED_NOW
+
+
+@pytest.mark.asyncio
+async def test_multi_sense_definition_accepts_any_term(
+    use_case: ScoreAndUpdateKnowledge,
+    vocab_repo: AsyncMock,
+    learner_id: LearnerId,
+    exercise_id: ExerciseId,
+) -> None:
+    """ "I" should pass when the target gloss is "I; me; my"."""
+    question = _vocab_question(correct_answers=("I; me; my",))
+    vocab_repo.get.return_value = None
+
+    for answer in ("I", "me", "my", "ME", "  my  "):
+        result = await use_case.execute(
+            learner_id=learner_id,
+            exercise_id=exercise_id,
+            question=question,
+            raw_answer=answer,
+            answered_at=FIXED_NOW,
+        )
+        assert result.is_correct is True, answer
+
+
+@pytest.mark.asyncio
+async def test_multi_sense_rejects_unrelated_term(
+    use_case: ScoreAndUpdateKnowledge,
+    vocab_repo: AsyncMock,
+    learner_id: LearnerId,
+    exercise_id: ExerciseId,
+) -> None:
+    question = _vocab_question(correct_answers=("I; me; my",))
+    vocab_repo.get.return_value = None
+
+    result = await use_case.execute(
+        learner_id=learner_id,
+        exercise_id=exercise_id,
+        question=question,
+        raw_answer="you",
+        answered_at=FIXED_NOW,
+    )
+    assert result.is_correct is False
+
+
+@pytest.mark.asyncio
+async def test_verb_gloss_accepts_without_leading_to(
+    use_case: ScoreAndUpdateKnowledge,
+    vocab_repo: AsyncMock,
+    learner_id: LearnerId,
+    exercise_id: ExerciseId,
+) -> None:
+    question = _vocab_question(correct_answers=("to study; to learn",))
+    vocab_repo.get.return_value = None
+
+    for answer in ("to study", "study", "learn", "to learn"):
+        result = await use_case.execute(
+            learner_id=learner_id,
+            exercise_id=exercise_id,
+            question=question,
+            raw_answer=answer,
+            answered_at=FIXED_NOW,
+        )
+        assert result.is_correct is True, answer
+
+
+def test_expand_accepted_answers_splits_senses() -> None:
+    terms = ScoreAndUpdateKnowledge._expand_accepted_answers(  # pyright: ignore[reportPrivateUsage]
+        ("he; him; his", "to go")
+    )
+    assert "he" in terms
+    assert "him" in terms
+    assert "his" in terms
+    assert "he; him; his" in terms  # full gloss still accepted
+    assert "to go" in terms
+    assert "go" in terms
+
+
+@pytest.mark.asyncio
+async def test_full_multi_sense_string_still_accepted(
+    use_case: ScoreAndUpdateKnowledge,
+    vocab_repo: AsyncMock,
+    learner_id: LearnerId,
+    exercise_id: ExerciseId,
+) -> None:
+    """Answering with the entire gloss must still count as correct."""
+    question = _vocab_question(correct_answers=("study; learn",))
+    vocab_repo.get.return_value = None
+
+    result = await use_case.execute(
+        learner_id=learner_id,
+        exercise_id=exercise_id,
+        question=question,
+        raw_answer="study; learn",
+        answered_at=FIXED_NOW,
+    )
+    assert result.is_correct is True

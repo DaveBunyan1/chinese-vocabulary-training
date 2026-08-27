@@ -35,6 +35,13 @@ from chinese_learning.infrastructure.persistence.repositories.learner.vocabulary
 )
 
 
+def _split_senses(text: str) -> list[str]:
+    """Split a gloss on ``;`` / ``/`` while keeping each piece intact."""
+    # Normalise separators then split
+    unified = text.replace("/", ";")
+    return [p for p in unified.split(";") if p.strip()]
+
+
 @dataclass(frozen=True, slots=True)
 class ScoreAndUpdateKnowledgeResult:
     attempt: AnswerAttempt
@@ -114,13 +121,36 @@ class ScoreAndUpdateKnowledge:
         """
         Normalised comparison: strip + casefold.
 
-        Accepts any entry in correct_answers. Does not attempt fuzzy matching
-        or multi-sense splitting — keep scoring deterministic for the MVP.
+        Accepts any entry in ``correct_answers``. Multi-sense targets such as
+        ``"I; me; my"`` or ``"to study; to learn"`` are split so a single
+        accepted term (e.g. ``"I"`` or ``"learn"``) counts as correct.
         """
         normalised = raw_answer.strip().casefold()
         if not normalised:
             return False
-        return any(ans.strip().casefold() == normalised for ans in correct_answers)
+        accepted = ScoreAndUpdateKnowledge._expand_accepted_answers(correct_answers)
+        return normalised in accepted
+
+    @staticmethod
+    def _expand_accepted_answers(correct_answers: tuple[str, ...]) -> set[str]:
+        """Flatten multi-sense glosses into individual acceptable terms.
+
+        Always keeps the full original string as well, so answering with the
+        complete gloss (e.g. ``"study; learn"``) remains valid.
+        """
+        terms: set[str] = set()
+        for answer in correct_answers:
+            full = answer.strip().casefold()
+            if full:
+                terms.add(full)
+            for part in _split_senses(answer):
+                term = part.strip().casefold()
+                if term:
+                    terms.add(term)
+                    # Also accept without a leading "to " (common in CEDICT verbs)
+                    if term.startswith("to ") and len(term) > 3:
+                        terms.add(term[3:].strip())
+        return terms
 
     # ------------------------------------------------------------------
     # Knowledge updates
