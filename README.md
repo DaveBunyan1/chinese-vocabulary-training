@@ -208,6 +208,10 @@ When running inside Docker Compose the `DATABASE_URL` is overridden to use the `
 
 ## Contributing / Next Steps
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, quality checks, and conventions.
+
 See `TODO.md` for the current prioritised list of bug fixes, polish items, and upcoming enhancements.
 
 Before adding new features, the immediate focus is stabilising the existing vertical slices (dashboard filtering, definition quality, test coverage, and documentation accuracy).
+
+This project is released under the [MIT License](LICENSE).

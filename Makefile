@@ -33,9 +33,9 @@ db-down:
 # --- Seeding ---
 
 # Ensure dev database is running, then execute seeding script inside virtualenv
+# PYTHONPATH is set so the installed package (or src layout) is importable
 seed-categories: db-up
-	cd backend
-	$(PYTHON) -m chinese_learning.infrastructure.persistence.seed.seed_categories
+	cd backend && PYTHONPATH=src $(PYTHON) -m chinese_learning.infrastructure.persistence.seed.seed_categories
 
 # --- Testing ---
 # Start the test Postgres container
