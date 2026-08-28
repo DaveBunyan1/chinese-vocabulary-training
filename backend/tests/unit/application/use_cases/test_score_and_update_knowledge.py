@@ -494,9 +494,7 @@ async def test_verb_gloss_accepts_without_leading_to(
 
 
 def test_expand_accepted_answers_splits_senses() -> None:
-    terms = ScoreAndUpdateKnowledge._expand_accepted_answers(  # pyright: ignore[reportPrivateUsage]
-        ("he; him; his", "to go")
-    )
+    terms = ScoreAndUpdateKnowledge._expand_accepted_answers(("he; him; his", "to go"))  # pyright: ignore[reportPrivateUsage]
     assert "he" in terms
     assert "him" in terms
     assert "his" in terms
@@ -524,3 +522,44 @@ async def test_full_multi_sense_string_still_accepted(
         answered_at=FIXED_NOW,
     )
     assert result.is_correct is True
+
+
+@pytest.mark.asyncio
+async def test_pinyin_tone_number_matches_diacritics(
+    use_case: ScoreAndUpdateKnowledge,
+    vocab_repo: AsyncMock,
+    learner_id: LearnerId,
+    exercise_id: ExerciseId,
+) -> None:
+    question = _vocab_question(correct_answers=("ni3 hao3",))
+    vocab_repo.get.return_value = None
+
+    for answer in ("ni3 hao3", "nǐ hǎo", "ni3hao3", "NǏ HǍO"):
+        result = await use_case.execute(
+            learner_id=learner_id,
+            exercise_id=exercise_id,
+            question=question,
+            raw_answer=answer,
+            answered_at=FIXED_NOW,
+        )
+        assert result.is_correct is True, answer
+
+
+@pytest.mark.asyncio
+async def test_pinyin_wrong_tone_rejected(
+    use_case: ScoreAndUpdateKnowledge,
+    vocab_repo: AsyncMock,
+    learner_id: LearnerId,
+    exercise_id: ExerciseId,
+) -> None:
+    question = _vocab_question(correct_answers=("ni3 hao3",))
+    vocab_repo.get.return_value = None
+
+    result = await use_case.execute(
+        learner_id=learner_id,
+        exercise_id=exercise_id,
+        question=question,
+        raw_answer="ni2 hao3",
+        answered_at=FIXED_NOW,
+    )
+    assert result.is_correct is False
