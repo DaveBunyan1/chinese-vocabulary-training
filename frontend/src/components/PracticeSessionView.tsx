@@ -21,6 +21,7 @@ import type {
   RecognitionDirection,
   SubmitAnswerResponse,
 } from "../types/practice";
+import { expandAcceptedTerms, formatAnswerForDisplay } from "../lib/pinyin";
 
 type PracticeMode = "vocabulary_recall" | "character_recognition";
 type Phase = "setup" | "active" | "summary";
@@ -318,7 +319,7 @@ export const PracticeSessionView: React.FC = () => {
                   autoFocus
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="Type your answer..."
+                  placeholder="Your answer (pinyin: ni3 or nǐ)..."
                   className="w-full text-center text-xl border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
                 <button
@@ -343,21 +344,45 @@ export const PracticeSessionView: React.FC = () => {
                   ) : (
                     <XCircle className="w-5 h-5 mt-0.5 shrink-0" />
                   )}
-                  <div>
+                  <div className="space-y-1">
                     <p className="font-semibold">
-                      {feedback.is_correct ? "Correct" : "Incorrect"}
+                      {feedback.is_correct ? "Correct!" : "Not quite"}
                     </p>
-                    {!feedback.is_correct && (
-                      <p className="text-sm mt-1">
-                        Expected:{" "}
-                        <span className="font-medium">
-                          {currentQuestion.correct_answers.join(" / ")}
-                        </span>
-                      </p>
+                    {!feedback.is_correct && currentQuestion && (
+                      <>
+                        <p className="text-sm mt-1">
+                          You answered:{" "}
+                          <span className="font-medium">
+                            {feedback.raw_answer || "—"}
+                          </span>
+                        </p>
+                        <p className="text-sm">
+                          Expected:{" "}
+                          <span className="font-medium">
+                            {currentQuestion.correct_answers
+                              .map(formatAnswerForDisplay)
+                              .join(" · ")}
+                          </span>
+                        </p>
+                        {expandAcceptedTerms(currentQuestion.correct_answers)
+                          .length > 1 && (
+                          <p className="text-sm opacity-90">
+                            Any of these also count:{" "}
+                            {expandAcceptedTerms(
+                              currentQuestion.correct_answers,
+                            )
+                              .map(formatAnswerForDisplay)
+                              .join(", ")}
+                          </p>
+                        )}
+                        <p className="text-xs mt-2 opacity-75">
+                          Tip: pinyin accepts tone numbers (ni3) or marks (nǐ).
+                        </p>
+                      </>
                     )}
                     {feedback.new_status && (
                       <p className="text-sm mt-1 opacity-80">
-                        Status: {feedback.previous_status ?? "—"} →{" "}
+                        Knowledge: {feedback.previous_status ?? "—"} →{" "}
                         {feedback.new_status}
                       </p>
                     )}

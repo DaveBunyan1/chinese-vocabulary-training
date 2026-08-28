@@ -20,6 +20,7 @@ import type {
   SubmitAnswerResponse,
 } from "../types/practice";
 import type { ReviewQueueItem } from "../types/reviewQueue";
+import { expandAcceptedTerms, formatAnswerForDisplay } from "../lib/pinyin";
 
 type Phase = "queue" | "active" | "summary";
 
@@ -338,7 +339,7 @@ export const SmartReviewView: React.FC = () => {
                   autoFocus
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="Type your answer..."
+                  placeholder="Your answer (pinyin: ni3 or nǐ)..."
                   className="w-full text-center text-xl border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
                 <button
@@ -365,15 +366,36 @@ export const SmartReviewView: React.FC = () => {
                   )}
                   <div>
                     <p className="font-semibold">
-                      {feedback.is_correct ? "Correct" : "Incorrect"}
+                      {feedback.is_correct ? "Correct!" : "Not quite"}
                     </p>
-                    {!feedback.is_correct && (
-                      <p className="text-sm mt-1">
-                        Expected:{" "}
-                        <span className="font-medium">
-                          {currentQuestion.correct_answers.join(" / ")}
-                        </span>
-                      </p>
+                    {!feedback.is_correct && currentQuestion && (
+                      <>
+                        <p className="text-sm mt-1">
+                          You answered:{" "}
+                          <span className="font-medium">
+                            {feedback.raw_answer || "—"}
+                          </span>
+                        </p>
+                        <p className="text-sm">
+                          Expected:{" "}
+                          <span className="font-medium">
+                            {currentQuestion.correct_answers
+                              .map(formatAnswerForDisplay)
+                              .join(" · ")}
+                          </span>
+                        </p>
+                        {expandAcceptedTerms(currentQuestion.correct_answers)
+                          .length > 1 && (
+                          <p className="text-sm opacity-90">
+                            Any of these also count:{" "}
+                            {expandAcceptedTerms(
+                              currentQuestion.correct_answers,
+                            )
+                              .map(formatAnswerForDisplay)
+                              .join(", ")}
+                          </p>
+                        )}
+                      </>
                     )}
                     {feedback.new_status && (
                       <p className="text-sm mt-1 opacity-80">

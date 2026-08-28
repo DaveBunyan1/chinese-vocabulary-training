@@ -27,6 +27,10 @@ from chinese_learning.domain.practice.exercise import ExerciseId
 from chinese_learning.domain.practice.question import Question, QuestionType
 from chinese_learning.domain.text_analysis.character import Character
 from chinese_learning.domain.vocabulary.vocabulary_item import VocabularyId
+from chinese_learning.infrastructure.nlp.pinyin_normalize import (
+    looks_like_pinyin,
+    normalize_pinyin_for_match,
+)
 from chinese_learning.infrastructure.persistence.repositories.learner.character_knowledge_repository import (
     CharacterKnowledgeRepository,
 )
@@ -129,7 +133,18 @@ class ScoreAndUpdateKnowledge:
         if not normalised:
             return False
         accepted = ScoreAndUpdateKnowledge._expand_accepted_answers(correct_answers)
-        return normalised in accepted
+        if normalised in accepted:
+            return True
+        # Pinyin: allow tone numbers or diacritics interchangeably
+        if looks_like_pinyin(raw_answer) or any(
+            looks_like_pinyin(a) for a in correct_answers
+        ):
+            answer_py = normalize_pinyin_for_match(raw_answer)
+            return any(
+                looks_like_pinyin(a) and normalize_pinyin_for_match(a) == answer_py
+                for a in accepted
+            )
+        return False
 
     @staticmethod
     def _expand_accepted_answers(correct_answers: tuple[str, ...]) -> set[str]:

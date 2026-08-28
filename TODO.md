@@ -19,8 +19,8 @@
 
 ### Input & Pedagogical Feedback
 
-- [ ] **Pinyin Tone Number Parsing:** Allow numbered Pinyin input (e.g., `ni3`) during practice while automatically rendering tone diacritics in UI output (`nǐ`).
-- [ ] **Rich Error Feedback:** Overhaul practice session feedback on incorrect answers to provide detailed explanations and diagnostic hints.
+- [x] **Pinyin Tone Number Parsing:** Allow numbered Pinyin input (e.g., `ni3`) during practice while automatically rendering tone diacritics in UI output (`nǐ`).
+- [x] **Rich Error Feedback:** Overhaul practice session feedback on incorrect answers to provide detailed explanations and diagnostic hints.
 
 ---
 
