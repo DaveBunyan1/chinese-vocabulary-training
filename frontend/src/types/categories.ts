@@ -44,3 +44,14 @@ export interface CategoryVocabularyResponse {
   items: CategoryVocabularyItem[];
   total: number;
 }
+
+export interface UpdateCategoryRequest {
+  name?: string | null;
+  parent_id?: string | null;
+  clear_parent?: boolean;
+  sort_order?: number | null;
+}
+
+export interface UpdateCategoryResponse {
+  category: Category;
+}

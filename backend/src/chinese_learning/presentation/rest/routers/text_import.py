@@ -11,6 +11,9 @@ from chinese_learning.application.use_cases.assign_hsk_category import AssignHSK
 from chinese_learning.application.use_cases.import_vocabulary_from_text import (
     ImportVocabularyFromText,
 )
+from chinese_learning.application.use_cases.link_vocabulary_characters import (
+    LinkVocabularyCharacters,
+)
 from chinese_learning.application.use_cases.update_knowledge_on_exposure import (
     UpdateKnowledgeOnExposure,
 )
@@ -99,6 +102,17 @@ async def import_text(
         vocabulary_ids=[item.id for item in import_result.vocabulary_items],
     )
 
+    # Ensure every imported word's constituent characters have knowledge rows
+    link_result = await LinkVocabularyCharacters(
+        CharacterKnowledgeRepository(session)
+    ).execute(learner_id, list(import_result.vocabulary_items))
+
+    # Prefer the higher character touch count for the response metric
+    char_knowledge_count = max(
+        exposure_result.character_knowledge_updated,
+        link_result.characters_touched,
+    )
+
     await session.commit()
 
     imported_summaries = [
@@ -116,7 +130,7 @@ async def import_text(
         total_tokens=len(import_result.analysis.sentence.tokens),
         created_vocabulary_count=import_result.created_count,
         existing_vocabulary_count=import_result.existing_count,
-        updated_character_knowledge_count=exposure_result.character_knowledge_updated,
+        updated_character_knowledge_count=char_knowledge_count,
         updated_vocabulary_knowledge_count=exposure_result.vocabulary_knowledge_updated,
         imported_items=imported_summaries,
     )

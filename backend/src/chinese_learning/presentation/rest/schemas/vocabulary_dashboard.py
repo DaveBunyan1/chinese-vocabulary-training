@@ -23,6 +23,7 @@ class VocabularyDashboardItemSchema(BaseModel):
     last_seen_at: str | None = None
     categories: list[CategorySummarySchema] = Field(default_factory=list)
     hsk_level: int | None = None
+    characters: list[str] = Field(default_factory=list)
 
 
 class VocabularyDashboardResponse(BaseModel):

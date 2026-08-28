@@ -6,17 +6,21 @@ import {
   RefreshCw,
   Trash2,
   ChevronRight,
+  Pencil,
 } from "lucide-react";
 
 import {
   assignCategory,
   createCategory,
+  deleteCategory,
   fetchCategories,
   fetchCategoryVocabulary,
   unassignCategory,
+  updateCategory,
 } from "../api/categories";
 import { fetchVocabularyDashboard } from "../api/vocabularyDashboard";
-import type { Category } from "../types/categories";
+import type { Category, CategoryVocabularyItem } from "../types/categories";
+import type { VocabularyDashboardItem } from "../types/vocabularyDashboard";
 
 function errorDetail(err: unknown): string {
   const anyErr = err as { response?: { data?: { detail?: string } } };
@@ -37,6 +41,8 @@ export const CategoryManagementView: React.FC = () => {
 
   // Assign search
   const [assignSearch, setAssignSearch] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editing, setEditing] = useState(false);
 
   const queryClient = useQueryClient();
   const [mutationError, setMutationError] = useState<string | null>(null);
@@ -59,7 +65,10 @@ export const CategoryManagementView: React.FC = () => {
     queryKey: ["vocabulary-dashboard", "all-for-categories"],
     queryFn: () => fetchVocabularyDashboard({}),
   });
-  const allVocab = useMemo(() => allVocabData?.items ?? [], [allVocabData]);
+  const allVocab = useMemo(
+    () => allVocabData?.items ?? [],
+    [allVocabData],
+  );
 
   const { data: assignedData } = useQuery({
     queryKey: ["category-vocabulary", selectedId],
@@ -72,7 +81,8 @@ export const CategoryManagementView: React.FC = () => {
   );
 
   const error =
-    mutationError ?? (categoriesError ? errorDetail(categoriesError) : null);
+    mutationError ??
+    (categoriesError ? errorDetail(categoriesError) : null);
 
   const selected = useMemo(
     () => categories.find((c) => c.id === selectedId) ?? null,
@@ -115,9 +125,7 @@ export const CategoryManagementView: React.FC = () => {
         vocabulary_id: vocabularyId,
         category_id: selectedId,
       });
-      await queryClient.invalidateQueries({
-        queryKey: ["category-vocabulary", selectedId],
-      });
+      await queryClient.invalidateQueries({ queryKey: ["category-vocabulary", selectedId] });
     } catch (err) {
       setMutationError(errorDetail(err));
     } finally {
@@ -131,9 +139,53 @@ export const CategoryManagementView: React.FC = () => {
     setMutationError(null);
     try {
       await unassignCategory(vocabularyId, selectedId);
-      await queryClient.invalidateQueries({
-        queryKey: ["category-vocabulary", selectedId],
-      });
+      await queryClient.invalidateQueries({ queryKey: ["category-vocabulary", selectedId] });
+    } catch (err) {
+      setMutationError(errorDetail(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+
+  const startEdit = () => {
+    if (!selected) return;
+    setEditName(selected.name);
+    setEditing(true);
+  };
+
+  const handleRename = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedId || !editName.trim()) return;
+    setBusy(true);
+    setMutationError(null);
+    try {
+      await updateCategory(selectedId, { name: editName.trim() });
+      setEditing(false);
+      await refetchCategories();
+      await queryClient.invalidateQueries({ queryKey: ["categories"] });
+    } catch (err) {
+      setMutationError(errorDetail(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!selectedId || !selected) return;
+    const ok = window.confirm(
+      `Delete category "${selected.name}"? Vocabulary will be unassigned from it.`,
+    );
+    if (!ok) return;
+    setBusy(true);
+    setMutationError(null);
+    try {
+      await deleteCategory(selectedId);
+      setSelectedId(null);
+      setEditing(false);
+      await refetchCategories();
+      await queryClient.invalidateQueries({ queryKey: ["categories"] });
+      await queryClient.invalidateQueries({ queryKey: ["vocabulary-dashboard"] });
     } catch (err) {
       setMutationError(errorDetail(err));
     } finally {
@@ -287,10 +339,64 @@ export const CategoryManagementView: React.FC = () => {
           ) : (
             <>
               <div>
-                <h2 className="text-lg font-semibold text-slate-800">
-                  {selected.name}
-                </h2>
-                <p className="text-xs text-slate-500">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    {editing && canManageSelected ? (
+                      <form
+                        onSubmit={handleRename}
+                        className="flex flex-wrap gap-2 items-center"
+                      >
+                        <input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="flex-1 min-w-32 border border-slate-300 rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-orange-500"
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          disabled={busy || !editName.trim()}
+                          className="text-sm px-2 py-1 bg-orange-600 text-white rounded-lg disabled:opacity-50"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditing(false)}
+                          className="text-sm text-slate-500"
+                        >
+                          Cancel
+                        </button>
+                      </form>
+                    ) : (
+                      <h2 className="text-lg font-semibold text-slate-800">
+                        {selected.name}
+                      </h2>
+                    )}
+                  </div>
+                  {canManageSelected && !editing && (
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={startEdit}
+                        disabled={busy}
+                        className="p-1.5 text-slate-500 hover:text-orange-600 rounded-lg hover:bg-orange-50"
+                        title="Rename"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteCategory()}
+                        disabled={busy}
+                        className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-red-50"
+                        title="Delete category"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
                   {selected.type}
                   {selected.parent_id ? " · subcategory" : ""}
                   {!canManageSelected && " · read-only (HSK/system)"}

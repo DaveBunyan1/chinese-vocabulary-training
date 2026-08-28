@@ -6,6 +6,8 @@ import type {
   CategoryVocabularyResponse,
   CreateCategoryRequest,
   CreateCategoryResponse,
+  UpdateCategoryRequest,
+  UpdateCategoryResponse,
 } from "../types/categories";
 
 export const fetchCategories = async (): Promise<CategoryListResponse> => {
@@ -49,4 +51,19 @@ export const fetchCategoryVocabulary = async (
     `/categories/${category_id}/vocabulary`,
   );
   return response.data;
+};
+
+export const updateCategory = async (
+  categoryId: string,
+  data: UpdateCategoryRequest,
+): Promise<UpdateCategoryResponse> => {
+  const response = await apiClient.patch<UpdateCategoryResponse>(
+    `/categories/${categoryId}`,
+    data,
+  );
+  return response.data;
+};
+
+export const deleteCategory = async (categoryId: string): Promise<void> => {
+  await apiClient.delete(`/categories/${categoryId}`);
 };

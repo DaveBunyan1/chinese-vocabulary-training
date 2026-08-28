@@ -59,3 +59,20 @@ class CategoryVocabularyResponse(BaseModel):
     category_id: str
     items: list[CategoryVocabularyItemSchema]
     total: int
+
+
+class UpdateCategoryRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    parent_id: str | None = Field(
+        default=None,
+        description="Set a new parent. Omit to leave unchanged.",
+    )
+    clear_parent: bool = Field(
+        default=False,
+        description="If true, remove parent (root category).",
+    )
+    sort_order: int | None = Field(default=None, ge=0)
+
+
+class UpdateCategoryResponse(BaseModel):
+    category: CategorySchema

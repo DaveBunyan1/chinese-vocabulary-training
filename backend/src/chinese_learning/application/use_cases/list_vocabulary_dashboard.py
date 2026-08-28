@@ -10,6 +10,7 @@ from chinese_learning.domain.category.category import Category, CategoryId, Cate
 from chinese_learning.domain.identity.learner import LearnerId
 from chinese_learning.domain.learner.knowledge_status import KnowledgeStatus
 from chinese_learning.domain.learner.vocabulary_knowledge import VocabularyKnowledge
+from chinese_learning.domain.text_analysis.character import characters_from_text
 from chinese_learning.domain.vocabulary.vocabulary_item import (
     VocabularyItem,
 )
@@ -49,6 +50,7 @@ class VocabularyDashboardRow:
     last_seen_at: str | None
     categories: tuple[CategorySummary, ...]
     hsk_level: int | None  # derived from assigned HSK category, if any
+    characters: tuple[str, ...]  # constituent CJK characters in text order
 
 
 @dataclass(frozen=True, slots=True)
@@ -252,4 +254,5 @@ class ListVocabularyDashboard:
             ),
             categories=categories,
             hsk_level=hsk_level,
+            characters=tuple(str(c) for c in characters_from_text(item.text)),
         )

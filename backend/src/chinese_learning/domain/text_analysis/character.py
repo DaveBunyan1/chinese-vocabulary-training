@@ -52,3 +52,23 @@ class Character:
             or 0x3400 <= code <= 0x4DBF  # CJK Extension A
             or 0x20000 <= code <= 0x2A6DF  # Extensions B+
         )
+
+
+def characters_from_text(text: str) -> tuple[Character, ...]:
+    """
+    Extract unique CJK characters from a vocabulary surface form, in order.
+
+    Non-CJK symbols are skipped. Duplicates within one word are kept once
+    (first occurrence order).
+    """
+    seen: set[str] = set()
+    result: list[Character] = []
+    for ch in text:
+        if ch in seen:
+            continue
+        try:
+            result.append(Character(ch))
+            seen.add(ch)
+        except ValueError:
+            continue
+    return tuple(result)
