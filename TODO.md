@@ -13,8 +13,8 @@
 
 ### Category & Knowledge Management
 
-- [ ] **Category CRUD:** Add support for editing and deleting custom user categories.
-- [ ] **Vocab-to-Character Linking:** Link vocabulary knowledge entities to individual constituent character knowledge records.
+- [x] **Category CRUD:** Add support for editing and deleting custom user categories.
+- [x] **Vocab-to-Character Linking:** Link vocabulary knowledge entities to individual constituent character knowledge records.
 - [ ] **Expanded Knowledge Statuses:** Introduce `KnowledgeStatus.UNKNOWN` (or equivalent) for sentence-based character recognition tests without automatically promoting words to `NEW`.
 
 ### Input & Pedagogical Feedback
