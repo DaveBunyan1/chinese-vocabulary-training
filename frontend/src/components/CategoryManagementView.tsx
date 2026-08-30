@@ -19,8 +19,7 @@ import {
   updateCategory,
 } from "../api/categories";
 import { fetchVocabularyDashboard } from "../api/vocabularyDashboard";
-import type { Category, CategoryVocabularyItem } from "../types/categories";
-import type { VocabularyDashboardItem } from "../types/vocabularyDashboard";
+import type { Category } from "../types/categories";
 
 function errorDetail(err: unknown): string {
   const anyErr = err as { response?: { data?: { detail?: string } } };
@@ -65,10 +64,7 @@ export const CategoryManagementView: React.FC = () => {
     queryKey: ["vocabulary-dashboard", "all-for-categories"],
     queryFn: () => fetchVocabularyDashboard({}),
   });
-  const allVocab = useMemo(
-    () => allVocabData?.items ?? [],
-    [allVocabData],
-  );
+  const allVocab = useMemo(() => allVocabData?.items ?? [], [allVocabData]);
 
   const { data: assignedData } = useQuery({
     queryKey: ["category-vocabulary", selectedId],
@@ -81,8 +77,7 @@ export const CategoryManagementView: React.FC = () => {
   );
 
   const error =
-    mutationError ??
-    (categoriesError ? errorDetail(categoriesError) : null);
+    mutationError ?? (categoriesError ? errorDetail(categoriesError) : null);
 
   const selected = useMemo(
     () => categories.find((c) => c.id === selectedId) ?? null,
@@ -125,7 +120,9 @@ export const CategoryManagementView: React.FC = () => {
         vocabulary_id: vocabularyId,
         category_id: selectedId,
       });
-      await queryClient.invalidateQueries({ queryKey: ["category-vocabulary", selectedId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["category-vocabulary", selectedId],
+      });
     } catch (err) {
       setMutationError(errorDetail(err));
     } finally {
@@ -139,14 +136,15 @@ export const CategoryManagementView: React.FC = () => {
     setMutationError(null);
     try {
       await unassignCategory(vocabularyId, selectedId);
-      await queryClient.invalidateQueries({ queryKey: ["category-vocabulary", selectedId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["category-vocabulary", selectedId],
+      });
     } catch (err) {
       setMutationError(errorDetail(err));
     } finally {
       setBusy(false);
     }
   };
-
 
   const startEdit = () => {
     if (!selected) return;
@@ -185,7 +183,9 @@ export const CategoryManagementView: React.FC = () => {
       setEditing(false);
       await refetchCategories();
       await queryClient.invalidateQueries({ queryKey: ["categories"] });
-      await queryClient.invalidateQueries({ queryKey: ["vocabulary-dashboard"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["vocabulary-dashboard"],
+      });
     } catch (err) {
       setMutationError(errorDetail(err));
     } finally {
