@@ -1,7 +1,6 @@
 import {
   createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -15,7 +14,7 @@ import {
   type Theme,
 } from "../lib/theme";
 
-type ThemeContextValue = {
+export type ThemeContextValue = {
   /** User preference: light | dark | system */
   theme: Theme;
   /** Effective theme currently painted on the document */
@@ -25,7 +24,7 @@ type ThemeContextValue = {
   cycleTheme: () => void;
 };
 
-const ThemeContext = createContext<ThemeContextValue | null>(null);
+export const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function getSystemTheme(): "light" | "dark" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -35,15 +34,16 @@ function getSystemTheme(): "light" | "dark" {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => readStoredTheme());
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">(() =>
-    theme === "system" ? getSystemTheme() : theme,
+  const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() =>
+    getSystemTheme(),
   );
+
+  const resolvedTheme: "light" | "dark" =
+    theme === "system" ? systemTheme : theme;
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
     storeTheme(next);
-    applyTheme(next);
-    setResolvedTheme(next === "system" ? getSystemTheme() : next);
   }, []);
 
   const cycleTheme = useCallback(() => {
@@ -52,26 +52,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setTheme(order[(idx + 1) % order.length]!);
   }, [theme, setTheme]);
 
-  // Apply on mount and whenever preference changes
+  // Sync document only (external system). No React setState here.
   useEffect(() => {
     applyTheme(theme);
-    setResolvedTheme(theme === "system" ? getSystemTheme() : theme);
-  }, [theme]);
+  }, [theme, systemTheme]);
 
-  // Live-update when OS preference changes and user is on "system"
+  // Subscribe to OS preference changes.
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
 
     const onChange = () => {
-      if (theme === "system") {
-        applyTheme("system");
-        setResolvedTheme(getSystemTheme());
-      }
+      setSystemTheme(getSystemTheme());
     };
 
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [theme]);
+  }, []);
 
   const value = useMemo(
     () => ({ theme, resolvedTheme, setTheme, cycleTheme }),
@@ -81,12 +77,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
-}
-
-export function useTheme(): ThemeContextValue {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) {
-    throw new Error("useTheme must be used within a ThemeProvider");
-  }
-  return ctx;
 }

@@ -1,6 +1,6 @@
 import { Monitor, Moon, Sun } from "lucide-react";
 
-import { useTheme } from "../../contexts/ThemeContext";
+import { useTheme } from "../../hooks/useTheme";
 import type { Theme } from "../../lib/theme";
 
 const ICONS: Record<Theme, React.ReactNode> = {
