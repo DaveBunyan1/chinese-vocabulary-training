@@ -16,6 +16,7 @@ import { CharacterDashboardView } from "./components/CharacterDashboardView";
 import { CategoryManagementView } from "./components/CategoryManagementView";
 import { ProgressStatsView } from "./components/ProgressStatsView";
 import { SmartReviewView } from "./components/SmartReviewView";
+import { ThemeToggle } from "./components/ui/ThemeToggle";
 
 type Tab =
   | "import"
@@ -30,9 +31,9 @@ function App() {
   const [tab, setTab] = useState<Tab>("import");
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="border-b bg-white">
-        <div className="max-w-5xl mx-auto px-6 flex gap-1 overflow-x-auto">
+    <div className="min-h-screen bg-background text-foreground">
+      <nav className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-5xl items-center gap-1 overflow-x-auto px-6">
           <TabButton
             active={tab === "import"}
             onClick={() => setTab("import")}
@@ -75,6 +76,9 @@ function App() {
             icon={<BarChart3 className="w-4 h-4" />}
             label="Progress"
           />
+          <div className="ml-auto flex shrink-0 items-center py-2 pl-2">
+            <ThemeToggle />
+          </div>
         </div>
       </nav>
 
@@ -100,10 +104,10 @@ const TabButton: React.FC<{
   <button
     type="button"
     onClick={onClick}
-    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+    className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition ${
       active
-        ? "border-indigo-600 text-indigo-700"
-        : "border-transparent text-slate-500 hover:text-slate-700"
+        ? "border-primary text-primary"
+        : "border-transparent text-muted-foreground hover:text-foreground"
     }`}
   >
     {icon}
