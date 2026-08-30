@@ -4,6 +4,14 @@ import { BarChart3, RefreshCw } from "lucide-react";
 
 import { fetchProgressStats } from "../api/progress";
 import type { StatusBreakdown } from "../types/progress";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  StatusBadge,
+} from "./ui";
 
 function errorDetail(err: unknown): string {
   const anyErr = err as { response?: { data?: { detail?: string } } };
@@ -24,42 +32,46 @@ export const ProgressStatsView: React.FC = () => {
   const error = queryError ? errorDetail(queryError) : null;
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <header className="border-b pb-4 flex items-start justify-between gap-4">
+    <div className="mx-auto max-w-4xl space-y-6 p-6">
+      <header className="flex items-start justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <BarChart3 className="text-sky-600" /> Progress
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+            <BarChart3 className="text-primary" /> Progress
           </h1>
-          <p className="text-slate-500 text-sm">
+          <p className="text-sm text-muted-foreground">
             Snapshot derived from your vocabulary and character knowledge
             records.
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => void refetch()}
           disabled={loading}
-          className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1"
+          className="text-muted-foreground"
         >
           <RefreshCw
-            className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`}
+            className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
           />
           Refresh
-        </button>
+        </Button>
       </header>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {loading && !data && (
-        <p className="text-sm text-slate-400 text-center py-12">Loading...</p>
+        <p className="py-12 text-center text-sm text-muted-foreground">
+          Loading...
+        </p>
       )}
 
       {data && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Section
             title="Vocabulary"
             status={data.vocabulary.by_status}
@@ -116,64 +128,68 @@ const Section: React.FC<{
   metrics: { label: string; value: number }[];
 }> = ({ title, status, metrics }) => {
   const total = status.total || 1;
+
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-5">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
-        <span className="text-sm text-slate-500">{status.total} total</span>
-      </div>
+    <Card>
+      <CardHeader className="flex-row items-baseline justify-between space-y-0">
+        <CardTitle>{title}</CardTitle>
+        <span className="text-sm text-muted-foreground">
+          {status.total} total
+        </span>
+      </CardHeader>
 
-      <div className="h-3 rounded-full overflow-hidden flex bg-slate-100">
-        {status.new > 0 && (
-          <div
-            className="bg-slate-400"
-            style={{ width: `${(status.new / total) * 100}%` }}
-            title={`New: ${status.new}`}
-          />
-        )}
-        {status.learning > 0 && (
-          <div
-            className="bg-amber-400"
-            style={{ width: `${(status.learning / total) * 100}%` }}
-            title={`Learning: ${status.learning}`}
-          />
-        )}
-        {status.known > 0 && (
-          <div
-            className="bg-emerald-500"
-            style={{ width: `${(status.known / total) * 100}%` }}
-            title={`Known: ${status.known}`}
-          />
-        )}
-      </div>
+      <CardContent className="space-y-5">
+        <div className="flex h-3 overflow-hidden rounded-full bg-muted">
+          {status.new > 0 && (
+            <div
+              className="bg-status-new"
+              style={{ width: `${(status.new / total) * 100}%` }}
+              title={`New: ${status.new}`}
+            />
+          )}
+          {status.learning > 0 && (
+            <div
+              className="bg-status-learning"
+              style={{ width: `${(status.learning / total) * 100}%` }}
+              title={`Learning: ${status.learning}`}
+            />
+          )}
+          {status.known > 0 && (
+            <div
+              className="bg-status-known"
+              style={{ width: `${(status.known / total) * 100}%` }}
+              title={`Known: ${status.known}`}
+            />
+          )}
+        </div>
 
-      <div className="grid grid-cols-3 gap-2 text-center text-sm">
-        <Stat label="New" value={status.new} color="text-slate-600" />
-        <Stat label="Learning" value={status.learning} color="text-amber-700" />
-        <Stat label="Known" value={status.known} color="text-emerald-700" />
-      </div>
+        <div className="grid grid-cols-3 gap-2 text-center text-sm">
+          <StatusStat status="new" value={status.new} />
+          <StatusStat status="learning" value={status.learning} />
+          <StatusStat status="known" value={status.known} />
+        </div>
 
-      <div className="grid grid-cols-2 gap-3 pt-2 border-t">
-        {metrics.map((m) => (
-          <div key={m.label} className="bg-slate-50 rounded-lg p-3 text-center">
-            <span className="block text-xl font-bold text-slate-800">
-              {m.value}
-            </span>
-            <span className="text-xs text-slate-500">{m.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+        <div className="grid grid-cols-2 gap-3 border-t border-border pt-4">
+          {metrics.map((m) => (
+            <div key={m.label} className="rounded-lg bg-muted p-3 text-center">
+              <span className="block text-xl font-bold text-foreground">
+                {m.value}
+              </span>
+              <span className="text-xs text-muted-foreground">{m.label}</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
-const Stat: React.FC<{ label: string; value: number; color: string }> = ({
-  label,
+const StatusStat: React.FC<{ status: string; value: number }> = ({
+  status,
   value,
-  color,
 }) => (
-  <div>
-    <span className={`block text-lg font-bold ${color}`}>{value}</span>
-    <span className="text-xs text-slate-500">{label}</span>
+  <div className="flex flex-col items-center gap-1">
+    <span className="text-lg font-bold text-foreground">{value}</span>
+    <StatusBadge status={status} />
   </div>
 );
