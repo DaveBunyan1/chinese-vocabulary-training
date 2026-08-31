@@ -20,6 +20,8 @@ import {
 } from "../api/categories";
 import { fetchVocabularyDashboard } from "../api/vocabularyDashboard";
 import type { Category } from "../types/categories";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "./ui";
+import { cn } from "../lib/utils";
 
 function errorDetail(err: unknown): string {
   const anyErr = err as { response?: { data?: { detail?: string } } };
@@ -27,6 +29,9 @@ function errorDetail(err: unknown): string {
   if (typeof detail === "string") return detail;
   return "Something went wrong.";
 }
+
+const fieldClassName =
+  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring";
 
 export const CategoryManagementView: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -221,269 +226,293 @@ export const CategoryManagementView: React.FC = () => {
     selected && (selected.type === "custom" || selected.type === "topic");
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <header className="border-b pb-4 flex items-start justify-between gap-4">
+    <div className="mx-auto max-w-5xl space-y-6 p-6">
+      <header className="flex items-start justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <FolderTree className="text-orange-600" /> Categories
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+            <FolderTree className="text-primary" /> Categories
           </h1>
-          <p className="text-slate-500 text-sm">
+          <p className="text-sm text-muted-foreground">
             Create topic/custom categories and assign vocabulary items.
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => void refetchCategories()}
           disabled={loading}
-          className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1"
+          className="text-muted-foreground"
         >
           <RefreshCw
-            className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`}
+            className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
           />
           Refresh
-        </button>
+        </Button>
       </header>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left: category list + create */}
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 space-y-2 max-h-112 overflow-y-auto">
-            <h2 className="text-sm font-semibold text-slate-700 mb-2">
-              All categories
-            </h2>
-            {roots.map((root) => (
-              <div key={root.id}>
-                <CategoryRow
-                  category={root}
-                  selected={selectedId === root.id}
-                  onSelect={() => setSelectedId(root.id)}
-                />
-                {childrenOf(root.id).map((child) => (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">All categories</CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-112 space-y-2 overflow-y-auto pt-3">
+              {roots.map((root) => (
+                <div key={root.id}>
                   <CategoryRow
-                    key={child.id}
-                    category={child}
-                    selected={selectedId === child.id}
-                    onSelect={() => setSelectedId(child.id)}
-                    nested
+                    category={root}
+                    selected={selectedId === root.id}
+                    onSelect={() => setSelectedId(root.id)}
                   />
-                ))}
-              </div>
-            ))}
-            {categories.length === 0 && !loading && (
-              <p className="text-sm text-slate-400 py-4 text-center">
-                No categories yet.
-              </p>
-            )}
-          </div>
+                  {childrenOf(root.id).map((child) => (
+                    <CategoryRow
+                      key={child.id}
+                      category={child}
+                      selected={selectedId === child.id}
+                      onSelect={() => setSelectedId(child.id)}
+                      nested
+                    />
+                  ))}
+                </div>
+              ))}
+              {categories.length === 0 && !loading && (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No categories yet.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
-          <form
-            onSubmit={handleCreate}
-            className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 space-y-3"
-          >
-            <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-1">
-              <Plus className="w-4 h-4" /> New category
-            </h2>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Name (e.g. Food, Travel…)"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={newType}
-                onChange={(e) =>
-                  setNewType(e.target.value as "custom" | "topic")
-                }
-                className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="custom">Custom</option>
-                <option value="topic">Topic</option>
-              </select>
-              <select
-                value={newParentId}
-                onChange={(e) => setNewParentId(e.target.value)}
-                className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="">No parent</option>
-                {manageable.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="submit"
-              disabled={busy || !newName.trim()}
-              className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition"
-            >
-              Create
-            </button>
-          </form>
+          <Card>
+            <CardContent className="space-y-3">
+              <h2 className="flex items-center gap-1 text-sm font-semibold text-foreground">
+                <Plus className="h-4 w-4" /> New category
+              </h2>
+              <form onSubmit={handleCreate} className="space-y-3">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Name (e.g. Food, Travel…)"
+                  className={fieldClassName}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={newType}
+                    onChange={(e) =>
+                      setNewType(e.target.value as "custom" | "topic")
+                    }
+                    className={fieldClassName}
+                  >
+                    <option value="custom">Custom</option>
+                    <option value="topic">Topic</option>
+                  </select>
+                  <select
+                    value={newParentId}
+                    onChange={(e) => setNewParentId(e.target.value)}
+                    className={fieldClassName}
+                  >
+                    <option value="">No parent</option>
+                    {manageable.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={busy || !newName.trim()}
+                  className="w-full"
+                >
+                  Create
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Right: assignments */}
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 space-y-4 min-h-96">
-          {!selected ? (
-            <p className="text-sm text-slate-400 text-center py-16">
-              Select a category to manage assignments.
-            </p>
-          ) : (
-            <>
-              <div>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    {editing && canManageSelected ? (
-                      <form
-                        onSubmit={handleRename}
-                        className="flex flex-wrap gap-2 items-center"
-                      >
-                        <input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="flex-1 min-w-32 border border-slate-300 rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-orange-500"
-                          autoFocus
-                        />
-                        <button
-                          type="submit"
-                          disabled={busy || !editName.trim()}
-                          className="text-sm px-2 py-1 bg-orange-600 text-white rounded-lg disabled:opacity-50"
+        <Card className="min-h-96">
+          <CardContent className="space-y-4">
+            {!selected ? (
+              <p className="py-16 text-center text-sm text-muted-foreground">
+                Select a category to manage assignments.
+              </p>
+            ) : (
+              <>
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      {editing && canManageSelected ? (
+                        <form
+                          onSubmit={handleRename}
+                          className="flex flex-wrap items-center gap-2"
                         >
-                          Save
-                        </button>
-                        <button
+                          <input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className={cn(fieldClassName, "min-w-32 flex-1")}
+                            autoFocus
+                          />
+                          <Button
+                            type="submit"
+                            size="sm"
+                            disabled={busy || !editName.trim()}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditing(false)}
+                          >
+                            Cancel
+                          </Button>
+                        </form>
+                      ) : (
+                        <h2 className="text-lg font-semibold text-foreground">
+                          {selected.name}
+                        </h2>
+                      )}
+                    </div>
+                    {canManageSelected && !editing && (
+                      <div className="flex shrink-0 gap-1">
+                        <Button
                           type="button"
-                          onClick={() => setEditing(false)}
-                          className="text-sm text-slate-500"
+                          variant="ghost"
+                          size="icon"
+                          onClick={startEdit}
+                          disabled={busy}
+                          title="Rename"
+                          className="text-muted-foreground hover:text-primary"
                         >
-                          Cancel
-                        </button>
-                      </form>
-                    ) : (
-                      <h2 className="text-lg font-semibold text-slate-800">
-                        {selected.name}
-                      </h2>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => void handleDeleteCategory()}
+                          disabled={busy}
+                          title="Delete category"
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
-                  {canManageSelected && !editing && (
-                    <div className="flex gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={startEdit}
-                        disabled={busy}
-                        className="p-1.5 text-slate-500 hover:text-orange-600 rounded-lg hover:bg-orange-50"
-                        title="Rename"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDeleteCategory()}
-                        disabled={busy}
-                        className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-red-50"
-                        title="Delete category"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {selected.type}
+                    {selected.parent_id ? " · subcategory" : ""}
+                    {!canManageSelected && " · read-only (HSK/system)"}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                    Assigned ({assigned.length})
+                  </h3>
+                  {assigned.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No items yet.
+                    </p>
+                  ) : (
+                    <ul className="max-h-40 space-y-1 overflow-y-auto">
+                      {assigned.map((item) => (
+                        <li
+                          key={item.vocabulary_id}
+                          className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted"
+                        >
+                          <span>
+                            <span className="font-medium text-foreground">
+                              {item.text}
+                            </span>{" "}
+                            <span className="text-muted-foreground">
+                              {item.pinyin}
+                            </span>
+                          </span>
+                          {canManageSelected && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                void handleUnassign(item.vocabulary_id)
+                              }
+                              disabled={busy}
+                              title="Remove"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  {selected.type}
-                  {selected.parent_id ? " · subcategory" : ""}
-                  {!canManageSelected && " · read-only (HSK/system)"}
-                </p>
-              </div>
 
-              <div>
-                <h3 className="text-sm font-medium text-slate-600 mb-2">
-                  Assigned ({assigned.length})
-                </h3>
-                {assigned.length === 0 ? (
-                  <p className="text-sm text-slate-400">No items yet.</p>
-                ) : (
-                  <ul className="space-y-1 max-h-40 overflow-y-auto">
-                    {assigned.map((item) => (
-                      <li
-                        key={item.vocabulary_id}
-                        className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 text-sm"
-                      >
-                        <span>
-                          <span className="font-medium text-slate-900">
-                            {item.text}
-                          </span>{" "}
-                          <span className="text-slate-500">{item.pinyin}</span>
-                        </span>
-                        {canManageSelected && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void handleUnassign(item.vocabulary_id)
-                            }
-                            disabled={busy}
-                            className="text-red-500 hover:text-red-700 p-1"
-                            title="Remove"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {canManageSelected && (
-                <div className="border-t pt-3 space-y-2">
-                  <h3 className="text-sm font-medium text-slate-600">
-                    Add vocabulary
-                  </h3>
-                  <input
-                    type="search"
-                    value={assignSearch}
-                    onChange={(e) => setAssignSearch(e.target.value)}
-                    placeholder="Search your vocabulary..."
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                  />
-                  <ul className="space-y-1 max-h-48 overflow-y-auto">
-                    {candidates.map((v) => (
-                      <li
-                        key={v.vocabulary_id}
-                        className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-orange-50 text-sm"
-                      >
-                        <span>
-                          <span className="font-medium">{v.text}</span>{" "}
-                          <span className="text-slate-500">{v.pinyin}</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => void handleAssign(v.vocabulary_id)}
-                          disabled={busy}
-                          className="text-orange-600 hover:text-orange-800 text-xs font-medium flex items-center gap-0.5"
+                {canManageSelected && (
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      Add vocabulary
+                    </h3>
+                    <input
+                      type="search"
+                      value={assignSearch}
+                      onChange={(e) => setAssignSearch(e.target.value)}
+                      placeholder="Search your vocabulary..."
+                      className={fieldClassName}
+                    />
+                    <ul className="max-h-48 space-y-1 overflow-y-auto">
+                      {candidates.map((v) => (
+                        <li
+                          key={v.vocabulary_id}
+                          className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted"
                         >
-                          Add <ChevronRight className="w-3 h-3" />
-                        </button>
-                      </li>
-                    ))}
-                    {candidates.length === 0 && (
-                      <li className="text-sm text-slate-400 py-2 text-center">
-                        No matching unassigned words.
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                          <span>
+                            <span className="font-medium text-foreground">
+                              {v.text}
+                            </span>{" "}
+                            <span className="text-muted-foreground">
+                              {v.pinyin}
+                            </span>
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => void handleAssign(v.vocabulary_id)}
+                            disabled={busy}
+                            className="text-primary"
+                          >
+                            Add <ChevronRight className="h-3 w-3" />
+                          </Button>
+                        </li>
+                      ))}
+                      {candidates.length === 0 && (
+                        <li className="py-2 text-center text-sm text-muted-foreground">
+                          No matching unassigned words.
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -498,15 +527,17 @@ const CategoryRow: React.FC<{
   <button
     type="button"
     onClick={onSelect}
-    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition flex items-center justify-between ${
-      nested ? "ml-4" : ""
-    } ${
+    className={cn(
+      "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition",
+      nested && "ml-4",
       selected
-        ? "bg-orange-50 text-orange-900 border border-orange-200"
-        : "hover:bg-slate-50 text-slate-700"
-    }`}
+        ? "border border-primary/30 bg-primary/10 text-foreground"
+        : "text-foreground hover:bg-muted",
+    )}
   >
     <span className="font-medium">{category.name}</span>
-    <span className="text-xs text-slate-400 uppercase">{category.type}</span>
+    <Badge variant="outline" className="uppercase">
+      {category.type}
+    </Badge>
   </button>
 );

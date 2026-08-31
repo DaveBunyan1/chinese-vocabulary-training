@@ -4,12 +4,8 @@ import { Languages, RefreshCw, Search } from "lucide-react";
 
 import { fetchCharacterDashboard } from "../api/characterDashboard";
 import type { CharacterDashboardItem } from "../types/characterDashboard";
-
-const STATUS_STYLES: Record<string, string> = {
-  new: "bg-slate-100 text-slate-700 border-slate-200",
-  learning: "bg-amber-50 text-amber-800 border-amber-200",
-  known: "bg-emerald-50 text-emerald-800 border-emerald-200",
-};
+import { Button, Card, CardContent, StatusBadge } from "./ui";
+import FilterChip from "./ui/FilterChip";
 
 function errorDetail(err: unknown): string {
   const anyErr = err as { response?: { data?: { detail?: string } } };
@@ -45,18 +41,18 @@ export const CharacterDashboardView: React.FC = () => {
   const statusCounts = data?.status_counts ?? {};
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <header className="border-b pb-4">
-        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <Languages className="text-violet-600" /> Characters
+    <div className="mx-auto max-w-5xl space-y-6 p-6">
+      <header className="border-b border-border pb-4">
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+          <Languages className="text-primary" /> Characters
         </h1>
-        <p className="text-slate-500 text-sm">
+        <p className="text-sm text-muted-foreground">
           Browse characters from your knowledge profile, filtered by status.
         </p>
       </header>
 
       <div className="flex flex-wrap gap-2">
-        <StatusChip
+        <FilterChip
           label="All"
           count={
             (statusCounts.new ?? 0) +
@@ -66,19 +62,19 @@ export const CharacterDashboardView: React.FC = () => {
           active={status === ""}
           onClick={() => setStatus("")}
         />
-        <StatusChip
+        <FilterChip
           label="New"
           count={statusCounts.new ?? 0}
           active={status === "new"}
           onClick={() => setStatus("new")}
         />
-        <StatusChip
+        <FilterChip
           label="Learning"
           count={statusCounts.learning ?? 0}
           active={status === "learning"}
           onClick={() => setStatus("learning")}
         />
-        <StatusChip
+        <FilterChip
           label="Known"
           count={statusCounts.known ?? 0}
           active={status === "known"}
@@ -86,34 +82,31 @@ export const CharacterDashboardView: React.FC = () => {
         />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <form onSubmit={onSearchSubmit} className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="search"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search character, pinyin, or meaning..."
-              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium transition"
-          >
-            Search
-          </button>
-        </form>
-      </div>
+      <Card>
+        <CardContent>
+          <form onSubmit={onSearchSubmit} className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search character, pinyin, or meaning..."
+                className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <Button type="submit">Search</Button>
+          </form>
+        </CardContent>
+      </Card>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      <div className="flex items-center justify-between text-sm text-slate-500">
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>
           {loading
             ? "Loading..."
@@ -121,28 +114,30 @@ export const CharacterDashboardView: React.FC = () => {
               ? `${data.total} character${data.total === 1 ? "" : "s"}`
               : ""}
         </span>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => void refetch()}
           disabled={loading}
-          className="flex items-center gap-1 hover:text-slate-700 disabled:opacity-50"
+          className="text-muted-foreground"
         >
           <RefreshCw
-            className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`}
+            className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
           />
           Refresh
-        </button>
+        </Button>
       </div>
 
       {!loading && data && data.items.length === 0 && (
-        <div className="text-center py-12 text-slate-500 text-sm border border-dashed border-slate-300 rounded-xl">
+        <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
           No characters match these filters.
           <br />
           Import some text on the Build knowledge tab first.
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {data?.items.map((item) => (
           <CharCard key={item.character} item={item} />
         ))}
@@ -151,46 +146,24 @@ export const CharacterDashboardView: React.FC = () => {
   );
 };
 
-const StatusChip: React.FC<{
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}> = ({ label, count, active, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`px-3 py-1.5 rounded-full text-sm border transition ${
-      active
-        ? "bg-violet-600 text-white border-violet-600"
-        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-    }`}
-  >
-    {label}{" "}
-    <span className={active ? "opacity-90" : "text-slate-400"}>({count})</span>
-  </button>
-);
-
 const CharCard: React.FC<{ item: CharacterDashboardItem }> = ({ item }) => (
-  <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-violet-300 transition text-center">
-    <div className="flex justify-end mb-1">
-      <span
-        className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
-          STATUS_STYLES[item.status] ?? STATUS_STYLES.new
-        }`}
-      >
-        {item.status}
-      </span>
-    </div>
-    <p className="text-4xl font-bold text-slate-900 leading-none">
-      {item.character}
-    </p>
-    <p className="text-sm text-violet-700 font-medium mt-2">{item.pinyin}</p>
-    <p className="text-xs text-slate-600 mt-1 line-clamp-2">{item.meaning}</p>
-    <div className="mt-3 flex justify-center gap-3 text-xs text-slate-400">
-      <span>✓ {item.successful_recognitions}</span>
-      <span>✗ {item.failed_recognitions}</span>
-      <span>seen {item.times_seen}</span>
-    </div>
-  </div>
+  <Card className="text-center transition hover:border-primary/40">
+    <CardContent>
+      <div className="mb-1 flex justify-end">
+        <StatusBadge status={item.status} />
+      </div>
+      <p className="text-4xl font-bold leading-none text-foreground">
+        {item.character}
+      </p>
+      <p className="mt-2 text-sm font-medium text-primary">{item.pinyin}</p>
+      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+        {item.meaning}
+      </p>
+      <div className="mt-3 flex justify-center gap-3 text-xs text-muted-foreground">
+        <span>✓ {item.successful_recognitions}</span>
+        <span>✗ {item.failed_recognitions}</span>
+        <span>seen {item.times_seen}</span>
+      </div>
+    </CardContent>
+  </Card>
 );
