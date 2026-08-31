@@ -8,7 +8,7 @@ import {
 } from "../api/vocabularyDashboard";
 import type { VocabularyDashboardItem } from "../types/vocabularyDashboard";
 import { Badge, Button, Card, CardContent, StatusBadge } from "./ui";
-import { cn } from "../lib/utils";
+import FilterChip from "./ui/FilterChip";
 
 function errorDetail(err: unknown): string {
   const anyErr = err as { response?: { data?: { detail?: string } } };
@@ -208,29 +208,6 @@ export const VocabularyDashboardView: React.FC = () => {
     </div>
   );
 };
-
-const FilterChip: React.FC<{
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}> = ({ label, count, active, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      "rounded-full border px-3 py-1.5 text-sm transition",
-      active
-        ? "border-primary bg-primary text-primary-foreground"
-        : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
-    )}
-  >
-    {label}{" "}
-    <span className={active ? "opacity-90" : "text-muted-foreground"}>
-      ({count})
-    </span>
-  </button>
-);
 
 const VocabCard: React.FC<{ item: VocabularyDashboardItem }> = ({ item }) => (
   <Card className="transition hover:border-primary/40">

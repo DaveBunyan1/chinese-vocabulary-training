@@ -1,4 +1,4 @@
-"""REST endpoints for category management (create + assign)."""
+"""REST endpoints for category management (create, update, delete, assign)."""
 
 from uuid import uuid4
 
@@ -9,6 +9,8 @@ from chinese_learning.application.use_cases.assign_user_category import (
     AssignUserCategory,
 )
 from chinese_learning.application.use_cases.create_category import CreateCustomCategory
+from chinese_learning.application.use_cases.delete_category import DeleteCategory
+from chinese_learning.application.use_cases.update_category import UpdateCategory
 from chinese_learning.domain.category.category import (
     Category,
     CategoryId,
@@ -35,6 +37,8 @@ from chinese_learning.presentation.rest.schemas.categories import (
     CreateCategoryRequest,
     CreateCategoryResponse,
     UnassignCategoryRequest,
+    UpdateCategoryRequest,
+    UpdateCategoryResponse,
 )
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
@@ -208,3 +212,67 @@ async def list_category_vocabulary(
         ],
         total=len(items_sorted),
     )
+
+
+@router.patch(
+    "/{category_id}",
+    response_model=UpdateCategoryResponse,
+    summary="Rename or reparent a custom/topic category",
+)
+async def update_category(
+    category_id: str,
+    payload: UpdateCategoryRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> UpdateCategoryResponse:
+    use_case = UpdateCategory(CategoryRepository(session))
+    parent_id = CategoryId(payload.parent_id) if payload.parent_id is not None else None
+    try:
+        category = await use_case.execute(
+            CategoryId(category_id),
+            name=payload.name,
+            parent_id=parent_id,
+            clear_parent=payload.clear_parent,
+            sort_order=payload.sort_order,
+        )
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    await session.commit()
+    return UpdateCategoryResponse(category=_to_schema(category))
+
+
+@router.delete(
+    "/{category_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a custom/topic category and its assignments",
+)
+async def delete_category(
+    category_id: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    use_case = DeleteCategory(
+        category_repo=CategoryRepository(session),
+        assignment_repo=CategoryAssignmentRepository(session),
+    )
+    try:
+        await use_case.execute(CategoryId(category_id))
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    await session.commit()
