@@ -5,7 +5,7 @@ from pathlib import Path
 
 class HSKLookupService:
     """
-    Maps a Chinese word (simplified) → lowest HSK 3.0 level (1–7).
+    Maps a Chinese word (simplified) → lowest HSK 3.0 level (1-7).
     Level 7 = HSK 7-9 band.
     Returns None when the word is not in any HSK list.
     """
@@ -14,7 +14,7 @@ class HSKLookupService:
         self._map = word_to_level
 
     def get_level(self, word: str) -> int | None:
-        """Return 1–7 or None."""
+        """Return 1-7 or None."""
         return self._map.get(word)
 
     @classmethod
@@ -43,7 +43,6 @@ class HSKLookupService:
         return cls(word_to_level)
 
 
-# Convenience singleton
 @lru_cache(maxsize=1)
 def get_default_hsk_lookup() -> HSKLookupService:
 
