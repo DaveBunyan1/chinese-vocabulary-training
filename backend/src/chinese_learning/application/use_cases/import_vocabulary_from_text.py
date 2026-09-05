@@ -63,9 +63,9 @@ class ImportVocabularyFromText:
                 if surface in items_by_text:
                     continue
 
-                existing_item = await self._vocabulary_repo.get_by_text(surface)
-                if existing_item is not None:
-                    items_by_text[surface] = existing_item
+                existing_items = await self._vocabulary_repo.get_by_text(surface)
+                if existing_items:
+                    items_by_text[surface] = existing_items[0]
                     existing += 1
                 else:
                     new_item = self._dictionary.lookup(surface)

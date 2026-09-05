@@ -19,6 +19,7 @@ def vocabulary_item_to_domain(model: VocabularyItemModel) -> VocabularyItem:
         text=model.text,
         pinyin=model.pinyin,
         meaning=model.meaning,
+        pos=model.pos or None,
     )
 
 
@@ -28,6 +29,7 @@ def vocabulary_item_to_model(domain: VocabularyItem) -> VocabularyItemModel:
         text=domain.text,
         pinyin=domain.pinyin,
         meaning=domain.meaning,
+        pos=(domain.pos or "").strip(),
     )
 
 

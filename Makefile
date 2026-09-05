@@ -64,7 +64,10 @@ db-down:
 # Seeding
 # ---------------------------------------------------------------------------
 seed-categories: db-up
-	cd backend && PYTHONPATH=src $(PYTHON) -m chinese_learning.infrastructure.persistence.seed.seed_categories
+	PYTHONPATH=$(REPO_ROOT)/backend/src $(PYTHON) -m chinese_learning.infrastructure.persistence.seed.seed_categories
+
+seed-hsk: db-up seed-categories
+	PYTHONPATH=$(REPO_ROOT)/backend/src $(PYTHON) -m chinese_learning.infrastructure.persistence.seed.seed_hsk_vocabulary
 
 # ---------------------------------------------------------------------------
 # Testing
@@ -121,4 +124,8 @@ format:
 # ---------------------------------------------------------------------------
 restart-dev:
 	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) up -d --build
+
+restart-fresh:
+	$(DOCKER_COMPOSE) down -v
 	$(DOCKER_COMPOSE) up -d --build
