@@ -111,13 +111,13 @@ test: test-db-up
 # Lint / format
 # ---------------------------------------------------------------------------
 lint:
-	cd backend && $(RUFF) check .
-	cd backend && $(RUFF) format --check .
+	$(RUFF) check .
+	$(RUFF) format --check .
 	cd backend && $(MYPY) src
 
 format:
-	cd backend && $(RUFF) check . --fix
-	cd backend && $(RUFF) format .
+	$(RUFF) check . --fix
+	$(RUFF) format .
 
 # ---------------------------------------------------------------------------
 # Docker helpers

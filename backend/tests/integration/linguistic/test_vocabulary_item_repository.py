@@ -72,10 +72,10 @@ async def test_vocabulary_item_get_by_text(
     await db_session.commit()
 
     loaded = await repo.get_by_text("中文")
-    assert loaded is not None
-    assert loaded.id == item.id
+    assert len(loaded) == 1
+    assert loaded[0].id == item.id
 
-    assert await repo.get_by_text("不存在") is None
+    assert await repo.get_by_text("不存在") == []
 
 
 @pytest.mark.asyncio

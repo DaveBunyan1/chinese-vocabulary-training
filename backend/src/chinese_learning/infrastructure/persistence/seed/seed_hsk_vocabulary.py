@@ -147,7 +147,9 @@ def load_hsk_entries(level: int) -> list[Entry]:
         raise FileNotFoundError(
             f"Missing {path}. Run `python backend/scripts/normalize_hsk_json.py` first."
         )
-    return json.loads(path.read_text(encoding="utf-8"))
+
+    return_data: list[Entry] = json.loads(path.read_text(encoding="utf-8"))
+    return return_data
 
 
 async def ensure_default_user_and_learner(session: AsyncSession) -> None:
@@ -203,11 +205,11 @@ async def seed_level(
     now = datetime.now(UTC)
 
     for entry in entries:
-        text = entry.get("simplified") or entry.get("hanzi") or ""
+        text = str(entry.get("simplified")) or str(entry.get("hanzi")) or ""
         if not text:
             continue
         pos = _primary_pos(entry)
-        sense_key = entry.get("_sense_key")
+        sense_key = str(entry.get("_sense_key"))
         vid = _vocab_id_for(text, pos=pos, sense_key=sense_key)
         pinyin = _primary_pinyin(entry)
         meaning = _primary_meaning(entry)
