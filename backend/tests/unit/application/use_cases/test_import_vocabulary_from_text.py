@@ -99,7 +99,7 @@ async def test_all_tokens_already_exist(
     analyse_text.execute.return_value = analysis
 
     existing_items = [make_vocab(t) for t in ["我", "喜欢", "中文"]]
-    vocabulary_repo.get_by_text.side_effect = existing_items
+    vocabulary_repo.get_by_text.side_effect = [[i] for i in existing_items]
 
     result = await use_case.execute(learner_id, "我喜欢中文")
 
@@ -124,7 +124,7 @@ async def test_all_tokens_are_new(
     analysis = make_analysis(["学习", "中文"])
     analyse_text.execute.return_value = analysis
 
-    vocabulary_repo.get_by_text.return_value = None
+    vocabulary_repo.get_by_text.return_value = []
 
     new_items = [make_vocab("学习"), make_vocab("中文")]
     dictionary.lookup.side_effect = new_items
@@ -154,7 +154,7 @@ async def test_mixed_existing_and_new(
     new1 = make_vocab("学习")
     new2 = make_vocab("中文")
 
-    vocabulary_repo.get_by_text.side_effect = [existing, None, None]
+    vocabulary_repo.get_by_text.side_effect = [[existing], [], []]
     dictionary.lookup.side_effect = [new1, new2]
 
     result = await use_case.execute(learner_id, "我学习中文")
@@ -190,8 +190,7 @@ async def test_result_contains_original_analysis(
 ):
     analysis = make_analysis(["测试"])
     analyse_text.execute.return_value = analysis
-    vocabulary_repo.get_by_text.return_value = make_vocab("测试")
-
+    vocabulary_repo.get_by_text.return_value = [make_vocab("测试")]
     result = await use_case.execute(learner_id, "测试")
 
     assert result.analysis is analysis

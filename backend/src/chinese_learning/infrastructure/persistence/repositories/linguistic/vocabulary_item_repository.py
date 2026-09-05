@@ -31,9 +31,22 @@ class VocabularyItemRepository:
         model = result.scalar_one_or_none()
         return vocabulary_item_to_domain(model) if model else None
 
-    async def get_by_text(self, text: str) -> VocabularyItem | None:
+    async def get_by_text(self, text: str) -> list[VocabularyItem]:
+        """Return all senses for a surface form (may be empty)."""
         record_repo_metric("get_by_text", entity="vocabulary_item")
         stmt = select(VocabularyItemModel).where(VocabularyItemModel.text == text)
+        result = await self.session.execute(stmt)
+        return [vocabulary_item_to_domain(m) for m in result.scalars().all()]
+
+    async def get_by_text_and_pos(
+        self, text: str, pos: str | None
+    ) -> VocabularyItem | None:
+        record_repo_metric("get_by_text_and_pos", entity="vocabulary_item")
+        pos_key = (pos or "").strip()
+        stmt = select(VocabularyItemModel).where(
+            VocabularyItemModel.text == text,
+            VocabularyItemModel.pos == pos_key,
+        )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
         return vocabulary_item_to_domain(model) if model else None
@@ -53,6 +66,7 @@ class VocabularyItemRepository:
                 "text": i.text,
                 "pinyin": i.pinyin,
                 "meaning": i.meaning,
+                "pos": (i.pos or "").strip(),
             }
             for i in items
         ]
@@ -64,6 +78,7 @@ class VocabularyItemRepository:
                 "text": stmt.excluded.text,
                 "pinyin": stmt.excluded.pinyin,
                 "meaning": stmt.excluded.meaning,
+                "pos": stmt.excluded.pos,
             },
         )
         await self.session.execute(upsert_stmt)

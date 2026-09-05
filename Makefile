@@ -64,7 +64,10 @@ db-down:
 # Seeding
 # ---------------------------------------------------------------------------
 seed-categories: db-up
-	cd backend && PYTHONPATH=src $(PYTHON) -m chinese_learning.infrastructure.persistence.seed.seed_categories
+	PYTHONPATH=$(REPO_ROOT)/backend/src $(PYTHON) -m chinese_learning.infrastructure.persistence.seed.seed_categories
+
+seed-hsk: db-up seed-categories
+	PYTHONPATH=$(REPO_ROOT)/backend/src $(PYTHON) -m chinese_learning.infrastructure.persistence.seed.seed_hsk_vocabulary
 
 # ---------------------------------------------------------------------------
 # Testing
@@ -108,17 +111,21 @@ test: test-db-up
 # Lint / format
 # ---------------------------------------------------------------------------
 lint:
-	cd backend && $(RUFF) check .
-	cd backend && $(RUFF) format --check .
+	$(RUFF) check .
+	$(RUFF) format --check .
 	cd backend && $(MYPY) src
 
 format:
-	cd backend && $(RUFF) check . --fix
-	cd backend && $(RUFF) format .
+	$(RUFF) check . --fix
+	$(RUFF) format .
 
 # ---------------------------------------------------------------------------
 # Docker helpers
 # ---------------------------------------------------------------------------
 restart-dev:
 	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) up -d --build
+
+restart-fresh:
+	$(DOCKER_COMPOSE) down -v
 	$(DOCKER_COMPOSE) up -d --build

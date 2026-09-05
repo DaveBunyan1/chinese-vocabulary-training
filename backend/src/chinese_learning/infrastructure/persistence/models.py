@@ -67,11 +67,15 @@ class SentenceModel(Base):
 
 class VocabularyItemModel(Base):
     __tablename__ = "vocabulary_items"
+    __table_args__ = (UniqueConstraint("text", "pos", name="uq_vocab_text_pos"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     text: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     pinyin: Mapped[str] = mapped_column(String(255), nullable=False)
     meaning: Mapped[str] = mapped_column(Text, nullable=False)
+    pos: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="", server_default=""
+    )
 
 
 class CategoryModel(Base):
