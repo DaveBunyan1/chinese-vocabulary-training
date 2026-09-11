@@ -2,8 +2,10 @@
 Generate a vocabulary-recall Exercise filtered by category and/or knowledge status.
 
 Selection uses weighted sampling (status, failures, recency, due).
-This use case builds an in-memory Exercise aggregate.
+Each question is multiple-choice with up to 5 options (1 correct + distractors).
 """
+
+from __future__ import annotations
 
 import random
 from dataclasses import dataclass
@@ -20,7 +22,12 @@ from chinese_learning.domain.identity.learner import LearnerId
 from chinese_learning.domain.learner.knowledge_status import KnowledgeStatus
 from chinese_learning.domain.learner.vocabulary_knowledge import VocabularyKnowledge
 from chinese_learning.domain.practice.exercise import Exercise, ExerciseId, ExerciseType
-from chinese_learning.domain.practice.question import Question, QuestionId, QuestionType
+from chinese_learning.domain.practice.question import (
+    AnswerOption,
+    Question,
+    QuestionId,
+    QuestionType,
+)
 from chinese_learning.domain.vocabulary.vocabulary_item import VocabularyItem
 from chinese_learning.infrastructure.persistence.repositories.learner.vocabulary_knowledge_repository import (
     VocabularyKnowledgeRepository,
@@ -31,6 +38,9 @@ from chinese_learning.infrastructure.persistence.repositories.linguistic.categor
 from chinese_learning.infrastructure.persistence.repositories.linguistic.vocabulary_item_repository import (
     VocabularyItemRepository,
 )
+
+DEFAULT_QUESTION_COUNT = 5
+OPTIONS_PER_QUESTION = 5
 
 
 class RecallDirection(StrEnum):
@@ -49,7 +59,7 @@ class GenerateVocabularyRecallExerciseResult:
 
 class GenerateVocabularyRecallExercise:
     """
-    Selects vocabulary with weighted sampling, builds recall questions,
+    Selects vocabulary with weighted sampling, builds MCQ recall questions,
     and returns a PENDING Exercise.
     """
 
@@ -67,15 +77,18 @@ class GenerateVocabularyRecallExercise:
         self,
         learner_id: LearnerId,
         *,
-        count: int = 10,
+        count: int = DEFAULT_QUESTION_COUNT,
         category_id: CategoryId | None = None,
         knowledge_status: KnowledgeStatus | None = None,
         direction: RecallDirection = RecallDirection.MEANING_TO_HANZI,
         created_at: datetime | None = None,
         rng: random.Random | None = None,
+        options_per_question: int = OPTIONS_PER_QUESTION,
     ) -> GenerateVocabularyRecallExerciseResult:
         if count < 1:
             raise ValueError("count must be at least 1")
+        if options_per_question < 2:
+            raise ValueError("options_per_question must be at least 2")
 
         now = created_at or datetime.now(UTC)
         sampler = rng or random.Random()
@@ -102,9 +115,12 @@ class GenerateVocabularyRecallExercise:
             rng=sampler,
         )
 
+        # Load selected items + a wider pool for distractors
         selected_ids = [k.vocabulary_id for k in selected_knowledge]
-        items = await self._item_repo.get_many(selected_ids)
-        items_by_id = {str(item.id): item for item in items}
+        pool_ids = [k.vocabulary_id for k in candidates]
+        all_ids = list({str(v): v for v in [*selected_ids, *pool_ids]}.values())
+        pool_items = await self._item_repo.get_many(all_ids)
+        items_by_id = {str(item.id): item for item in pool_items}
 
         ordered_items: list[VocabularyItem] = []
         for vid in selected_ids:
@@ -117,8 +133,17 @@ class GenerateVocabularyRecallExercise:
                 "No vocabulary items could be loaded for the selected candidates"
             )
 
+        answer_pool = [self._answer_text(item, direction) for item in pool_items]
+
         questions = tuple(
-            self._build_question(item, order=i, direction=direction)
+            self._build_question(
+                item,
+                order=i,
+                direction=direction,
+                answer_pool=answer_pool,
+                options_count=options_per_question,
+                rng=sampler,
+            )
             for i, item in enumerate(ordered_items)
         )
 
@@ -144,7 +169,6 @@ class GenerateVocabularyRecallExercise:
         knowledge_status: KnowledgeStatus | None,
         category_id: CategoryId | None,
     ) -> list[VocabularyKnowledge]:
-        # Load all then filter in memory (avoids SQLEnum string comparison issues)
         knowledge_list = await self._knowledge_repo.get_all_for_learner(learner_id)
         if knowledge_status is not None:
             knowledge_list = [k for k in knowledge_list if k.status is knowledge_status]
@@ -158,32 +182,73 @@ class GenerateVocabularyRecallExercise:
 
         return knowledge_list
 
+    @staticmethod
+    def _answer_text(item: VocabularyItem, direction: RecallDirection) -> str:
+        if direction is RecallDirection.HANZI_TO_MEANING:
+            return item.meaning
+        return item.text  # meaning_to_hanzi / pinyin_to_hanzi
+
     def _build_question(
         self,
         item: VocabularyItem,
         *,
         order: int,
         direction: RecallDirection,
+        answer_pool: list[str],
+        options_count: int,
+        rng: random.Random,
     ) -> Question:
         if direction is RecallDirection.MEANING_TO_HANZI:
             prompt = item.meaning
-            correct_answers = (item.text,)
+            correct = item.text
         elif direction is RecallDirection.PINYIN_TO_HANZI:
             prompt = item.pinyin
-            correct_answers = (item.text,)
+            correct = item.text
         elif direction is RecallDirection.HANZI_TO_MEANING:
             prompt = item.text
-            correct_answers = (item.meaning,)
+            correct = item.meaning
         else:
             raise ValueError(f"Unsupported recall direction: {direction}")
+
+        options = self._build_options(
+            correct=correct,
+            pool=answer_pool,
+            options_count=options_count,
+            rng=rng,
+        )
 
         return Question(
             id=QuestionId(str(uuid4())),
             type=QuestionType.VOCABULARY_RECALL,
             order=order,
             prompt=prompt,
-            correct_answers=correct_answers,
+            correct_answers=(correct,),
             vocabulary_id=item.id,
             character=None,
-            options=(),
+            options=options,
         )
+
+    @staticmethod
+    def _build_options(
+        *,
+        correct: str,
+        pool: list[str],
+        options_count: int,
+        rng: random.Random,
+    ) -> tuple[AnswerOption, ...]:
+        """1 correct + unique distractors, shuffled. Falls back if pool is small."""
+        distractors: list[str] = []
+        seen = {correct}
+        candidates = [t for t in pool if t not in seen]
+        rng.shuffle(candidates)
+        for text in candidates:
+            if text not in seen:
+                distractors.append(text)
+                seen.add(text)
+            if len(distractors) >= options_count - 1:
+                break
+
+        options = [AnswerOption(text=correct, is_correct=True)]
+        options.extend(AnswerOption(text=d, is_correct=False) for d in distractors)
+        rng.shuffle(options)
+        return tuple(options)
