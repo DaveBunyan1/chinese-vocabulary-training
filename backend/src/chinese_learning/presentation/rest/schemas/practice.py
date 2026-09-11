@@ -34,7 +34,7 @@ class ExerciseSchema(BaseModel):
 
 
 class GenerateVocabularyRecallRequest(BaseModel):
-    count: int = Field(default=10, ge=1, le=50)
+    count: int = Field(default=5, ge=1, le=50)
     category_id: str | None = None
     knowledge_status: str | None = Field(
         default=None,
@@ -44,7 +44,7 @@ class GenerateVocabularyRecallRequest(BaseModel):
 
 
 class GenerateCharacterRecognitionRequest(BaseModel):
-    count: int = Field(default=10, ge=1, le=50)
+    count: int = Field(default=5, ge=1, le=50)
     knowledge_status: str | None = None
     direction: str = Field(default="character_to_meaning")
 

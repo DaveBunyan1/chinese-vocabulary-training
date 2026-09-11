@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Brain,
   CheckCircle,
@@ -7,12 +7,14 @@ import {
   ChevronRight,
   RotateCcw,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   generateCharacterRecognition,
   generateVocabularyRecall,
   submitAnswer,
 } from "../api/practice";
+import { fetchCategories } from "../api/categories";
 import type {
   Exercise,
   KnowledgeStatus,
@@ -21,6 +23,7 @@ import type {
   RecognitionDirection,
   SubmitAnswerResponse,
 } from "../types/practice";
+import type { Category } from "../types/categories";
 import { expandAcceptedTerms, formatAnswerForDisplay } from "../lib/pinyin";
 import { Button, Card, CardContent, CardHeader, CardTitle } from "./ui";
 import { cn } from "../lib/utils";
@@ -47,10 +50,11 @@ const answerFieldClassName =
 export const PracticeSessionView: React.FC = () => {
   // Setup
   const [mode, setMode] = useState<PracticeMode>("vocabulary_recall");
-  const [count, setCount] = useState(10);
+  const [count, setCount] = useState(5);
   const [knowledgeStatus, setKnowledgeStatus] = useState<KnowledgeStatus | "">(
     "",
   );
+  const [categoryId, setCategoryId] = useState<string>("");
   const [vocabDirection, setVocabDirection] =
     useState<RecallDirection>("meaning_to_hanzi");
   const [charDirection, setCharDirection] = useState<RecognitionDirection>(
@@ -69,16 +73,32 @@ export const PracticeSessionView: React.FC = () => {
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [history, setHistory] = useState<AnswerRecord[]>([]);
 
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories"],
+    queryFn: fetchCategories,
+  });
+  const categories: Category[] = categoriesData?.categories ?? [];
+
   const currentQuestion: Question | null = useMemo(() => {
     if (!exercise) return null;
     return exercise.questions[index] ?? null;
   }, [exercise, index]);
+
+  const isMcq = Boolean(
+    currentQuestion?.is_multiple_choice &&
+    currentQuestion.options &&
+    currentQuestion.options.length > 0,
+  );
 
   const progressLabel = exercise
     ? `${Math.min(index + 1, exercise.question_count)} / ${exercise.question_count}`
     : "";
 
   const correctCount = history.filter((h) => h.response.is_correct).length;
+
+  useEffect(() => {
+    setAnswer("");
+  }, [index, exercise?.id]);
 
   const startSession = async () => {
     setLoading(true);
@@ -94,6 +114,7 @@ export const PracticeSessionView: React.FC = () => {
           ? await generateVocabularyRecall({
               count,
               knowledge_status: knowledgeStatus || null,
+              category_id: categoryId || null,
               direction: vocabDirection,
             })
           : await generateCharacterRecognition({
@@ -115,6 +136,10 @@ export const PracticeSessionView: React.FC = () => {
   const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!exercise || !currentQuestion || submitting || feedback) return;
+    if (!answer.trim()) {
+      setError("Please select or enter an answer.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -175,6 +200,7 @@ export const PracticeSessionView: React.FC = () => {
         </h1>
         <p className="text-sm text-muted-foreground">
           Recall vocabulary or recognise characters from your knowledge profile.
+          Sessions default to 5 multiple-choice questions.
         </p>
       </header>
 
@@ -184,10 +210,9 @@ export const PracticeSessionView: React.FC = () => {
         </div>
       )}
 
-      {/* ---------- SETUP ---------- */}
       {phase === "setup" && (
         <Card>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-5 pt-6">
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">
                 Mode
@@ -219,6 +244,9 @@ export const PracticeSessionView: React.FC = () => {
                   onChange={(e) => setCount(Number(e.target.value) || 1)}
                   className={fieldClassName}
                 />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Default 5 — each question has up to 5 answer choices.
+                </p>
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-foreground">
@@ -238,6 +266,27 @@ export const PracticeSessionView: React.FC = () => {
                 </select>
               </div>
             </div>
+
+            {mode === "vocabulary_recall" && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-foreground">
+                  Category
+                </label>
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className={fieldClassName}
+                >
+                  <option value="">Any category</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                      {c.hsk_level != null ? ` (HSK ${c.hsk_level})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {mode === "vocabulary_recall" ? (
               <div>
@@ -284,120 +333,139 @@ export const PracticeSessionView: React.FC = () => {
               </div>
             )}
 
-            <div className="flex justify-end pt-2">
-              <Button type="button" onClick={startSession} disabled={loading}>
-                {loading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" /> Starting...
-                  </>
-                ) : (
-                  <>
-                    Start practice <ChevronRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </div>
+            <Button
+              type="button"
+              onClick={startSession}
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" /> Starting…
+                </>
+              ) : (
+                "Start practice"
+              )}
+            </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* ---------- ACTIVE ---------- */}
       {phase === "active" && exercise && currentQuestion && (
-        <div className="space-y-5">
+        <div className="space-y-4">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>
-              {exercise.type === "vocabulary_recall"
-                ? "Vocabulary recall"
-                : "Character recognition"}
+              Question {progressLabel}
+              {exercise.knowledge_status_filter
+                ? ` · ${exercise.knowledge_status_filter}`
+                : ""}
             </span>
-            <span className="font-medium text-foreground">{progressLabel}</span>
+            <span>
+              Score {correctCount}/{history.length}
+            </span>
           </div>
 
           <Card>
-            <CardContent className="space-y-6 p-8 text-center">
-              <p className="text-sm uppercase tracking-wide text-muted-foreground">
-                Prompt
-              </p>
-              <p className="wrap-break-word text-4xl font-bold text-foreground">
+            <CardHeader>
+              <CardTitle className="text-center text-3xl font-semibold tracking-wide">
                 {currentQuestion.prompt}
-              </p>
-
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               {!feedback ? (
                 <form onSubmit={handleSubmitAnswer} className="space-y-4">
-                  <input
-                    type="text"
-                    autoFocus
-                    value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
-                    placeholder="Your answer (pinyin: ni3 or nǐ)..."
-                    className={answerFieldClassName}
-                  />
+                  {isMcq ? (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-foreground">
+                        Choose an answer
+                      </label>
+                      <select
+                        value={answer}
+                        onChange={(e) => setAnswer(e.target.value)}
+                        className={fieldClassName}
+                        disabled={submitting}
+                      >
+                        <option value="">— Select —</option>
+                        {currentQuestion.options.map((opt) => (
+                          <option key={opt.text} value={opt.text}>
+                            {opt.text}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {currentQuestion.options.length} choices
+                      </p>
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
+                      placeholder="Type your answer"
+                      className={answerFieldClassName}
+                      autoFocus
+                      disabled={submitting}
+                    />
+                  )}
                   <Button
                     type="submit"
                     disabled={submitting || !answer.trim()}
                     className="w-full"
                   >
-                    {submitting ? "Checking..." : "Check answer"}
+                    {submitting ? "Checking…" : "Check answer"}
                   </Button>
                 </form>
               ) : (
                 <div className="space-y-4">
                   <div
                     className={cn(
-                      "flex items-start gap-3 rounded-lg border p-4 text-left",
+                      "rounded-lg border p-4",
                       feedback.is_correct
-                        ? "border-success/30 bg-success/10 text-success"
-                        : "border-destructive/30 bg-destructive/10 text-destructive",
+                        ? "border-success/40 bg-success/10 text-success"
+                        : "border-destructive/40 bg-destructive/10 text-destructive",
                     )}
                   >
-                    {feedback.is_correct ? (
-                      <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
-                    ) : (
-                      <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
-                    )}
-                    <div className="space-y-1">
-                      <p className="font-semibold">
-                        {feedback.is_correct ? "Correct!" : "Not quite"}
-                      </p>
-                      {!feedback.is_correct && currentQuestion && (
-                        <>
-                          <p className="mt-1 text-sm">
-                            You answered:{" "}
-                            <span className="font-medium">
-                              {feedback.raw_answer || "—"}
-                            </span>
-                          </p>
-                          <p className="text-sm">
+                    <div className="flex items-start gap-2">
+                      {feedback.is_correct ? (
+                        <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                      ) : (
+                        <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">
+                          {feedback.is_correct ? "Correct!" : "Not quite"}
+                        </p>
+                        <p className="mt-1 text-sm opacity-90">
+                          Your answer:{" "}
+                          <span className="font-medium">
+                            {formatAnswerForDisplay(feedback.raw_answer)}
+                          </span>
+                        </p>
+                        {!feedback.is_correct && (
+                          <p className="mt-1 text-sm opacity-90">
                             Expected:{" "}
                             <span className="font-medium">
                               {currentQuestion.correct_answers
                                 .map(formatAnswerForDisplay)
-                                .join(" · ")}
+                                .join(" / ")}
                             </span>
                           </p>
-                          {expandAcceptedTerms(currentQuestion.correct_answers)
-                            .length > 1 && (
-                            <p className="text-sm opacity-90">
-                              Any of these also count:{" "}
-                              {expandAcceptedTerms(
-                                currentQuestion.correct_answers,
-                              )
-                                .map(formatAnswerForDisplay)
-                                .join(", ")}
-                            </p>
-                          )}
+                        )}
+                        {currentQuestion.correct_answers.length > 1 && (
                           <p className="mt-2 text-xs opacity-75">
-                            Tip: pinyin accepts tone numbers (ni3) or marks
-                            (nǐ).
+                            Any of these also count:{" "}
+                            {expandAcceptedTerms(
+                              currentQuestion.correct_answers,
+                            ).join(", ")}
                           </p>
-                        </>
-                      )}
-                      {feedback.new_status && (
-                        <p className="mt-1 text-sm opacity-80">
-                          Knowledge: {feedback.previous_status ?? "—"} →{" "}
-                          {feedback.new_status}
-                        </p>
-                      )}
+                        )}
+                        {feedback.new_status && (
+                          <p className="mt-1 text-sm opacity-80">
+                            Knowledge: {feedback.previous_status ?? "—"} →{" "}
+                            {feedback.new_status}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -426,7 +494,6 @@ export const PracticeSessionView: React.FC = () => {
         </div>
       )}
 
-      {/* ---------- SUMMARY ---------- */}
       {phase === "summary" && exercise && (
         <Card>
           <CardHeader>
@@ -456,37 +523,41 @@ export const PracticeSessionView: React.FC = () => {
               </div>
             </div>
 
-            <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+            <ul className="max-h-64 space-y-2 overflow-y-auto text-sm">
               {history.map(({ question, response }) => (
                 <li
                   key={question.id}
-                  className="flex items-center justify-between gap-3 bg-card px-4 py-3 text-sm"
+                  className="flex items-start gap-2 rounded-md border border-border px-3 py-2"
                 >
+                  {response.is_correct ? (
+                    <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                  ) : (
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  )}
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-foreground">
+                    <p className="font-medium text-foreground">
                       {question.prompt}
                     </p>
-                    <p className="truncate text-muted-foreground">
-                      Your answer: {response.raw_answer || "—"}
+                    <p className="text-muted-foreground">
+                      {formatAnswerForDisplay(response.raw_answer)}
+                      {!response.is_correct && (
+                        <>
+                          {" "}
+                          →{" "}
+                          {question.correct_answers
+                            .map(formatAnswerForDisplay)
+                            .join(" / ")}
+                        </>
+                      )}
                     </p>
                   </div>
-                  {response.is_correct ? (
-                    <CheckCircle className="h-5 w-5 shrink-0 text-success" />
-                  ) : (
-                    <XCircle className="h-5 w-5 shrink-0 text-destructive" />
-                  )}
                 </li>
               ))}
             </ul>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" onClick={resetToSetup}>
-                Back to setup
-              </Button>
-              <Button type="button" onClick={startSession} disabled={loading}>
-                Practice again
-              </Button>
-            </div>
+            <Button type="button" onClick={resetToSetup} className="w-full">
+              Practice again
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -494,21 +565,27 @@ export const PracticeSessionView: React.FC = () => {
   );
 };
 
-const ModeButton: React.FC<{
+function ModeButton({
+  active,
+  onClick,
+  label,
+}: {
   active: boolean;
   onClick: () => void;
   label: string;
-}> = ({ active, onClick, label }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      "flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition",
-      active
-        ? "border-primary/40 bg-primary/10 text-foreground"
-        : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground",
-    )}
-  >
-    {label}
-  </button>
-);
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-background text-foreground hover:bg-muted",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
